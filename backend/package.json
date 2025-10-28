@@ -7,9 +7,14 @@
     "cf-typegen": "wrangler types --env-interface CloudflareBindings"
   },
   "dependencies": {
+    "@hono/node-server": "^1.19.5",
+    "@hono/node-ws": "^1.2.0",
     "hono": "^4.10.3"
   },
   "devDependencies": {
-    "wrangler": "^4.4.0"
+    "@cloudflare/workers-types": "^4.20251014.0",
+    "@types/node": "^24.9.1",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.45.1"
   }
 }

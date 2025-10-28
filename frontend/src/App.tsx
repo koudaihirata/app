@@ -6,11 +6,13 @@ import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider } 
 import Home from './pages/Home'
 import NotFound from './pages/NotFound'
 import Game from './pages/Game'
+import Rooms from './pages/Rooms'
 
 const router = createBrowserRouter(
   createRoutesFromElements(
     <>
       <Route path="/" element={<Home />}/>
+      <Route path='/rooms' element={<Rooms />}/>
       <Route path='/game' element={<Game />}/>
       <Route path="/*" element={<NotFound />} />
     </>
