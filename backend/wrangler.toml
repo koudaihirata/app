@@ -1,4 +1,4 @@
-name = "backend"
+name = "backend-ws"
 main = "src/index.ts"
 compatibility_date = "2025-10-28"
 workers_dev = true
@@ -8,5 +8,5 @@ name = "ROOM"
 class_name = "Room"
 
 [[migrations]]
-tag = "v2"
+tag = "v1"
 new_sqlite_classes = ["Room"]

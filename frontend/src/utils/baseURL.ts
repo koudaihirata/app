@@ -1,0 +1,1 @@
+export const baseURL = 'wss://backend-ws.hiratakoudai61.workers.dev/ws'
