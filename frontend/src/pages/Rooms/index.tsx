@@ -3,6 +3,7 @@ import { useReducer, useRef } from 'react'
 import { defaultState, Reducer } from './reducer';
 import { appendLog, connected, disconnected, joined, setMembers, setName, setRoom } from './action';
 import { baseURL } from '../../utils/baseURL';
+import NormalBtn from '../../components/button/NormalBtn';
 
 type WsMsg =
   | { type: 'hello'; text: string }
@@ -124,13 +125,15 @@ export default function Rooms() {
     <>
       {!state.joined ? 
         <section className={styles.roomSection}>
-          <h2 className={styles.roomTitle}>ロゴ</h2>
           <div className={styles.roomConnectArea}>
+            <h2 className={styles.roomTitle}>ロゴ</h2>
             <div className={styles.inputWrap}>
               <input placeholder="roomId" value={state.roomId} onChange={(e) => dispatch(setRoom(e.target.value))} disabled={state.connected}/>
               <input placeholder="name" value={state.name} onChange={(e) => dispatch(setName(e.target.value))} disabled={state.connected}/>
             </div>
-            <button onClick={connect}>Connect & Join</button>
+          </div>
+          <div className={styles.roomJoiningBtn}>
+            <NormalBtn label='決定' onClick={connect}/>
           </div>
           
           {/* チャット機能は後ででいいので一旦放置
@@ -144,22 +147,28 @@ export default function Rooms() {
           <pre style={{ background: '#111', color: '#eee', padding: 12, marginTop: 12, height: 260, overflow: 'auto' }}>
             {state.logs.join('\n')}
           </pre> */}
-
-          <p style={{ fontSize: 12, color: '#666' }}>
-            状態: {state.connected ? '🟢 connected' : '🔴 disconnected'} / {state.joined ? `🚪 joined(${state.roomId})` : 'not joined'}
-          </p>
         </section>
         :
         <div className={styles.membersSection}>
-          <div className={styles.membersTitleWrap}>
-            <button onClick={disconnect} className={styles.backBtn}>←</button>
-            <p>{state.roomId}</p>
-            <button className={styles.backBtn} style={{opacity: '0'}}>←</button>
+          <div className={styles.membersListWrap}>
+            <div className={styles.membersTitleWrap}>
+              <p onClick={disconnect} className={styles.backBtn}>◀︎</p>
+              <p>{state.roomId}</p>
+              <button className={styles.backBtn} style={{opacity: '0'}}>←</button>
+            </div>
+            <div className={styles.membersList}>
+              <p className={styles.players}>参加プレイヤー</p>
+              <div className={styles.membersWrap}>
+                {Array.from({length: 6}).map((_, index) => (
+                  <div key={index} className={styles.member}  style={!state.members[index] ? {height: "56px"} : {}}>
+                    <p>{state.members[index] || ''}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-          <div className={styles.membersList}>
-            {state.members.map((m, index) => (
-              <div key={index}>{m}</div>
-            ))}
+          <div className={styles.gameStateBtn}>
+            <NormalBtn label='ゲームを開始する' onClick={() => console.log('ゲーム開始！！！')} />
           </div>
         </div>
       }
