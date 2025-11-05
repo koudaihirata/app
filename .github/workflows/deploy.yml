@@ -2,7 +2,8 @@ name: deploy
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
     # backend 配下 or この workflow 自体が変わったときだけ起動
     paths:
       - 'backend/**'
@@ -12,7 +13,7 @@ jobs:
   deploy:
     name: Deploy Cloudflare Worker (backend/)
     runs-on: ubuntu-latest
-
+    timeout-minutes: 60
     # 同時実行の取り違い防止
     concurrency:
       group: backend-deploy
