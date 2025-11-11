@@ -4,6 +4,7 @@ import { defaultState, Reducer } from './reducer';
 import { appendLog, connected, disconnected, joined, setMembers, setName, setRoom } from './action';
 import { baseURL } from '../../utils/baseURL';
 import NormalBtn from '../../components/button/NormalBtn';
+import { useNavigate } from 'react-router-dom';
 
 type WsMsg =
   | { type: 'hello'; text: string }
@@ -13,10 +14,17 @@ type WsMsg =
   | { type: 'members'; members: string[] }
   | { type: 'error'; text: string }
   | { type: 'pong'; at: number }
+  // ▼ ここからゲーム系
+  | { type: 'phase_changed'; phase: 'lobby' | 'game' }
+  | { type: 'game_started'; players: string[]; hp: Record<string, number>; round: number; turn: string; deckVer?: number }
+  | { type: 'state'; hp: Record<string, number>; round: number; turn: string }
+  | { type: 'played'; by: string; cardId: number; target?: string; delta: { hp: Record<string, number> }; next?: { round: number; turn: string } }
+  | { type: 'game_over'; winner: string };
 
 export default function Rooms() {
   const [state, dispatch] = useReducer(Reducer, defaultState)
   const wsRef = useRef<WebSocket | null>(null)
+  const navigate = useNavigate()
 
   // Cloudflare Workers の WebSocket エンドポイント
   const WS_BASE = `${baseURL}?room=${encodeURIComponent(state.roomId)}&name=${encodeURIComponent(state.name)}`
@@ -74,7 +82,10 @@ export default function Rooms() {
             case 'members':
               dispatch(setMembers(msg.members))
               dispatch(appendLog(`👥 members: ${msg.members.join(', ')}`))
-            break
+              break
+            case 'game_started':
+              navigate(`/game?room=${encodeURIComponent(state.roomId)}&name=${encodeURIComponent(state.name)}`)
+              break
             case 'error':
               dispatch(appendLog(`❗ ${msg.text}`))
               break
@@ -134,6 +145,10 @@ export default function Rooms() {
           </div>
           <div className={styles.roomJoiningBtn}>
             <NormalBtn label='決定' onClick={connect}/>
+
+            <pre className={styles.systemLog}>
+              { state.logs.slice().reverse().join('\n') }
+            </pre>
           </div>
           
           {/* チャット機能は後ででいいので一旦放置
@@ -142,11 +157,6 @@ export default function Rooms() {
             <button onClick={sendChat} disabled={!joined || !state.input}>Send</button>
             <button onClick={sendPing} disabled={!connected}>Ping</button>
           </div> */}
-
-          {/*  ログ機能も後ででいいので一旦放置
-          <pre style={{ background: '#111', color: '#eee', padding: 12, marginTop: 12, height: 260, overflow: 'auto' }}>
-            {state.logs.join('\n')}
-          </pre> */}
         </section>
         :
         <div className={styles.membersSection}>
@@ -168,7 +178,17 @@ export default function Rooms() {
             </div>
           </div>
           <div className={styles.gameStateBtn}>
-            <NormalBtn label='ゲームを開始する' onClick={() => console.log('ゲーム開始！！！')} />
+            <NormalBtn
+              label='ゲームを開始する'
+              onClick={() => {
+                if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+                wsRef.current.send(JSON.stringify({ type: 'start' }))
+              }}
+            />
+
+            <pre className={styles.systemLog}>
+              { state.logs.slice().reverse().join('\n') }
+            </pre>
           </div>
         </div>
       }
