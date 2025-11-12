@@ -5,11 +5,15 @@ export type LobbyDeps = {
     send: (ws: Client, obj: unknown) => void
     broadcast: (obj: unknown) => void
     getMembers: () => string[]
+    getHostId: () => string | null
+    isHost: (clientId?: string) => boolean
 }
 
 export function onLobbyConnect(deps: LobbyDeps, ws: Client, name: string, roomName: string) {
-    deps.send(ws, { type: 'joined', roomId: roomName, at: Date.now(), members: deps.getMembers() })
-    deps.broadcast({ type: 'members', members: deps.getMembers() })
+    const members = deps.getMembers()
+    const hostClientId = deps.getHostId() ?? undefined
+    deps.send(ws, { type: 'joined', roomId: roomName, at: Date.now(), members, hostClientId })
+    deps.broadcast({ type: 'members', members, hostClientId })
     deps.broadcast({ type: 'system', text: `🔔 ${name} が「${roomName}」に入室しました`, at: Date.now() })
 }
 
@@ -17,6 +21,7 @@ export function handleLobbyMessage(
     deps: LobbyDeps,
     ws: Client,
     name: string,
+    clientId: string | undefined,
     parsed: any,                 // 受信メッセージ（JSON）
     promoteToGame: () => void    // フェーズ切替コールバック
 ) {
@@ -29,6 +34,10 @@ export function handleLobbyMessage(
         return
     }
     if (parsed.type === 'start') {
+        if (!clientId || !deps.isHost(clientId)) {
+            deps.send(ws, { type: 'error', text: 'ゲームの開始はホストのみが実行できます' })
+            return
+        }
         // フロントにフェーズ変更を通知
         deps.broadcast({ type: 'phase_changed', phase: 'game' })
         promoteToGame()
@@ -40,6 +49,8 @@ export function handleLobbyMessage(
 }
 
 export function onLobbyDisconnect(deps: LobbyDeps, name: string) {
+    const members = deps.getMembers()
+    const hostClientId = deps.getHostId() ?? undefined
     deps.broadcast({ type: 'system', text: `👋 ${name} が退室しました`, at: Date.now() })
-    deps.broadcast({ type: 'members', members: deps.getMembers() })
+    deps.broadcast({ type: 'members', members, hostClientId })
 }

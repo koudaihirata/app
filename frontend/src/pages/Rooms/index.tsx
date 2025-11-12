@@ -1,17 +1,19 @@
+// src/pages/Rooms/index.ts
+
 import styles from './styles.module.css'
-import { useReducer, useRef } from 'react'
+import { useEffect, useReducer, useRef } from 'react'
 import { defaultState, Reducer } from './reducer';
 import { appendLog, connected, disconnected, joined, setMembers, setName, setRoom } from './action';
 import { baseURL } from '../../utils/baseURL';
 import NormalBtn from '../../components/button/NormalBtn';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 type WsMsg =
   | { type: 'hello'; text: string }
-  | { type: 'joined'; roomId: string; at: number }
+  | { type: 'joined'; roomId: string; at: number; members?: string[]; hostClientId?: string }
   | { type: 'system'; text: string; at: number }
   | { type: 'chat'; from: string; text: string; at: number }
-  | { type: 'members'; members: string[] }
+  | { type: 'members'; members: string[]; hostClientId?: string }
   | { type: 'error'; text: string }
   | { type: 'pong'; at: number }
   // ▼ ここからゲーム系
@@ -22,12 +24,87 @@ type WsMsg =
   | { type: 'game_over'; winner: string };
 
 export default function Rooms() {
-  const [state, dispatch] = useReducer(Reducer, defaultState)
-  const wsRef = useRef<WebSocket | null>(null)
+  const location = useLocation()
   const navigate = useNavigate()
 
+  type NavState = { joined?: boolean; roomId?: string; name?: string; members?: string[]; hostId?: string | null } | null
+  const navStateRef = useRef<NavState>(location.state as NavState)
+
+  const IDENTITY_STORAGE_KEY = 'rooms:lastIdentity'
+
+  const createInitialState = () => {
+    const base = { ...defaultState }
+    try {
+      const raw = sessionStorage.getItem(IDENTITY_STORAGE_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw) as { roomId?: string; name?: string }
+        if (parsed.roomId) base.roomId = parsed.roomId
+        if (parsed.name) base.name = parsed.name
+      }
+    } catch {
+      // noop
+    }
+    const navState = navStateRef.current
+    if (navState?.roomId) base.roomId = navState.roomId
+    if (navState?.name) base.name = navState.name
+    if (navState?.members) base.members = navState.members
+    if (navState?.hostId) base.hostId = navState.hostId
+    if (navState?.joined) base.joined = true
+    return base
+  }
+
+  const [state, dispatch] = useReducer(Reducer, undefined, createInitialState)
+  const wsRef = useRef<WebSocket | null>(null)
+  const shouldReconnect = useRef(Boolean(navStateRef.current?.joined))
+  const lastNavState = useRef<NavState>(navStateRef.current)
+  const CLIENT_ID_STORAGE_KEY = 'rooms:clientId'
+
+  const ensureClientId = () => {
+    const fallback = () => `anon-${Date.now()}-${Math.random().toString(16).slice(2)}`
+    try {
+      const stored = sessionStorage.getItem(CLIENT_ID_STORAGE_KEY)
+      if (stored) return stored
+      const generated = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : fallback()
+      sessionStorage.setItem(CLIENT_ID_STORAGE_KEY, generated)
+      return generated
+    } catch {
+      return fallback()
+    }
+  }
+
+  const clientIdRef = useRef<string>(ensureClientId())
+
+  useEffect(() => {
+    const navState = location.state as NavState
+    if (!navState || navState === lastNavState.current) return
+    lastNavState.current = navState
+    if (navState.roomId) dispatch(setRoom(navState.roomId))
+    if (navState.name) dispatch(setName(navState.name))
+    if (navState.members) {
+      if (typeof navState.hostId !== 'undefined') {
+        dispatch(setMembers(navState.members, navState.hostId))
+      } else {
+        dispatch(setMembers(navState.members))
+      }
+    }
+    if (navState.joined) {
+      dispatch(joined(navState.roomId ?? state.roomId))
+      shouldReconnect.current = true
+    }
+  }, [location.state, state.roomId])
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(IDENTITY_STORAGE_KEY, JSON.stringify({ roomId: state.roomId, name: state.name }))
+    } catch (error) {
+      console.warn('failed to persist identity', error)
+    }
+  }, [state.roomId, state.name])
+
   // Cloudflare Workers の WebSocket エンドポイント
-  const WS_BASE = `${baseURL}?room=${encodeURIComponent(state.roomId)}&name=${encodeURIComponent(state.name)}`
+  const WS_BASE = `${baseURL}?room=${encodeURIComponent(state.roomId)}&name=${encodeURIComponent(state.name)}&cid=${encodeURIComponent(clientIdRef.current)}`
   // 開発中に wrangler dev を使う場合は下を使う：
   // const WS_BASE = `${location.protocol === 'https:' ? 'wss' : 'ws'}://127.0.0.1:8787/ws`
 
@@ -43,7 +120,12 @@ export default function Rooms() {
       dispatch(connected())
       dispatch(appendLog('🟢 connected'))
       // 接続直後に join を投げる
-      const joinMsg = { type: 'join', roomId: state.roomId, name: state.name }
+      const joinMsg = {
+        type: 'join',
+        roomId: state.roomId,
+        name: state.name,
+        clientId: clientIdRef.current
+      }
       ws.send(JSON.stringify(joinMsg))
     }
 
@@ -72,6 +154,9 @@ export default function Rooms() {
             case 'joined':
               dispatch(appendLog(`🚪 joined room: ${msg.roomId}`));
               dispatch(joined(msg.roomId));
+              if (msg.members) {
+                dispatch(setMembers(msg.members, msg.hostClientId))
+              }
               break
             case 'system':
               dispatch(appendLog(`🔔 ${msg.text}`))
@@ -80,11 +165,20 @@ export default function Rooms() {
               dispatch(appendLog(`💬 ${msg.from}: ${msg.text}`))
               break
             case 'members':
-              dispatch(setMembers(msg.members))
+              dispatch(setMembers(msg.members, msg.hostClientId))
               dispatch(appendLog(`👥 members: ${msg.members.join(', ')}`))
               break
             case 'game_started':
               navigate(`/game?room=${encodeURIComponent(state.roomId)}&name=${encodeURIComponent(state.name)}`)
+              break
+            case 'phase_changed':
+              dispatch(appendLog(`🎮 phase: ${msg.phase}`))
+              if (msg.phase === 'game') {
+                navigate(`/game?room=${encodeURIComponent(state.roomId)}&name=${encodeURIComponent(state.name)}`)
+              }
+              break
+            case 'state':
+              dispatch(appendLog(`📊 round ${msg.round}, turn: ${msg.turn}`))
               break
             case 'error':
               dispatch(appendLog(`❗ ${msg.text}`))
@@ -130,7 +224,20 @@ export default function Rooms() {
     dispatch(disconnected())
   }
 
+  useEffect(() => {
+    if (!shouldReconnect.current) return
+    if (state.connected) {
+      shouldReconnect.current = false
+      return
+    }
+    shouldReconnect.current = false
+    connect()
+  }, [state.connected, state.roomId, state.name])
+
   console.log(state);
+
+  const isHost = Boolean(state.hostId && state.hostId === clientIdRef.current)
+  const canStartGame = isHost && state.members.length > 1
 
   return (
     <>
@@ -144,7 +251,7 @@ export default function Rooms() {
             </div>
           </div>
           <div className={styles.roomJoiningBtn}>
-            <NormalBtn label='決定' onClick={connect}/>
+            <NormalBtn label='決定' bg='#717171' onClick={connect}/>
 
             <pre className={styles.systemLog}>
               { state.logs.slice().reverse().join('\n') }
@@ -179,10 +286,19 @@ export default function Rooms() {
           </div>
           <div className={styles.gameStateBtn}>
             <NormalBtn
-              label='ゲームを開始する'
+              label={isHost ? 'ゲームを開始する' : 'ホスト待機中'}
+              bg={canStartGame ? '#717171' : '#c7c7c7ff'}
               onClick={() => {
-                if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
-                wsRef.current.send(JSON.stringify({ type: 'start' }))
+                if (!isHost) {
+                  dispatch(appendLog('❗ error: ゲーム開始はホストのみが実行できます'))
+                  return
+                }
+                if (state.members.length > 1) {
+                  if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+                  wsRef.current.send(JSON.stringify({ type: 'start', clientId: clientIdRef.current }))
+                } else {
+                  dispatch(appendLog(`❗ error: ゲームを始めるには2人以上が必要です`))
+                }
               }}
             />
 

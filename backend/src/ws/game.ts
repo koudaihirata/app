@@ -62,7 +62,7 @@ export class GameEngine {
         })
     }
 
-    handleMessage(deps: GameDeps, ws: Client, actor: string, parsed: any) {
+    handleMessage(deps: GameDeps, ws: Client, actor: string, parsed: any): 'game_over' | void {
         if (parsed.type === 'sync') {
         deps.send(ws, {
             type: 'state',
@@ -102,7 +102,7 @@ export class GameEngine {
             deps.broadcast({ type:'played', by:actor, cardId, target, delta:{ hp: delta }})
             deps.broadcast({ type:'game_over', winner: alive[0] })
             this.state.started = false
-            return
+            return 'game_over'
         }
 
         this.state.turnIdx = (this.state.turnIdx + 1) % this.state.players.length

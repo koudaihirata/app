@@ -4,9 +4,11 @@ export interface Env {
 }
 
 export type Client = WebSocket
+export type Phase = 'lobby' | 'game'
 
-export type WsMsg =
-    | { type: 'join' }
+/** クライアント → サーバー */
+export type InboundWsMsg =
+    | { type: 'join'; clientId?: string }
     | { type: 'chat'; text: string }
     | { type: 'ping' }
     | { type: 'start' }                 // ロビー→ゲームへ
@@ -14,4 +16,25 @@ export type WsMsg =
     | { type: 'end_turn' }
     | { type: 'sync' }
 
-export type Phase = 'lobby' | 'game'
+/** サーバー → クライアント */
+export type OutboundWsMsg =
+    | { type: 'joined'; roomId: string; at: number; members?: string[]; hostClientId?: string }
+    | { type: 'members'; members: string[]; hostClientId?: string }
+    | { type: 'system'; text: string; at: number }
+    | { type: 'chat'; from: string; text: string; at: number }
+    | { type: 'pong'; at: number }
+    | { type: 'phase_changed'; phase: Phase }
+    | { type: 'game_started'; players: string[]; hp: Record<string,number>; round: number; turn: string; deckVer: number }
+    | { type: 'state'; hp: Record<string,number>; round: number; turn: string }
+    | { type: 'played'; by: string; cardId: number; target?: string; delta: { hp: Record<string,number> }; next?: { round: number; turn: string } }
+    | { type: 'game_over'; winner: string }
+    | { type: 'error'; text: string; code?: string }
+
+
+    /** JSON.parse の直後に使う安全ヘルパ */
+export function asInbound(x: unknown): InboundWsMsg {
+    return x as InboundWsMsg
+}
+export function asOutbound(x: unknown): OutboundWsMsg {
+    return x as OutboundWsMsg
+}

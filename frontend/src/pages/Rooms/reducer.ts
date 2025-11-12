@@ -1,3 +1,5 @@
+// src/pages/Rooms/reducer.ts
+
 import { type WsAction } from "./action"
 
 export type State = {
@@ -6,8 +8,9 @@ export type State = {
     connected: boolean,
     joined: boolean,
     input: string,
-    logs: string[]
-    members: string[]
+    logs: string[],
+    members: string[],
+    hostId: string | null
 }
 
 export const defaultState: State = {
@@ -17,7 +20,8 @@ export const defaultState: State = {
     joined: false,
     input: '',
     logs: [],
-    members: []
+    members: [],
+    hostId: null
 }
 
 export function Reducer(state: State, action: WsAction): State {
@@ -70,10 +74,14 @@ export function Reducer(state: State, action: WsAction): State {
                 ]
             }
         case 'SET_MEMBERS':
-            return {
+            const nextState: State = {
                 ...state,
                 members: action.members
             }
+            if (Object.prototype.hasOwnProperty.call(action, 'hostId')) {
+                nextState.hostId = action.hostId ?? null
+            }
+            return nextState
     }
     throw new (class SystemException {})()
 }
