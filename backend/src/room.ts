@@ -14,6 +14,7 @@ export class Room {
   private clients: Set<Client> = new Set()
   private names: Map<Client, string> = new Map()
   private clientIds: Map<Client, string> = new Map()
+  private preferredHostId: string | null = null
   private hostClientId: string | null = null
 
   private game = new GameEngine()
@@ -38,22 +39,20 @@ export class Room {
       hostClientId: this.hostClientId ?? undefined,
     })
   }
-  private refreshHostAfterRemoval(removedId?: string) {
-    if (removedId && removedId === this.hostClientId) {
-      const next = this.clientIds.values().next().value ?? null
-      this.hostClientId = next ?? null
-    }
-    if (!this.hostClientId && this.clientIds.size > 0) {
-      const next = this.clientIds.values().next().value ?? null
-      this.hostClientId = next ?? null
-    }
-  }
-  private ensureClientId(ws: Client, candidate?: string | null) {
-    if (!candidate) return
+  private ensureClientId(ws: Client, candidate?: string | null): boolean {
+    if (!candidate) return false
     this.clientIds.set(ws, candidate)
-    if (!this.hostClientId) {
-      this.hostClientId = candidate
+
+    if (!this.preferredHostId) {
+      this.preferredHostId = candidate
     }
+
+    if (candidate === this.preferredHostId && this.hostClientId !== candidate) {
+      this.hostClientId = candidate
+      return true
+    }
+
+    return false
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -91,7 +90,9 @@ export class Room {
         this.clients.delete(existingWs)
         this.names.delete(existingWs)
         this.clientIds.delete(existingWs)
-        this.refreshHostAfterRemoval(removedId)
+        if (removedId && removedId === this.hostClientId) {
+          this.hostClientId = null
+        }
         this.broadcastMembers()
       }
     }
@@ -99,10 +100,28 @@ export class Room {
     // 参加処理
     this.clients.add(server)
     this.names.set(server, name)
-    this.ensureClientId(server, clientIdFromQuery)
+    const hostChanged = this.ensureClientId(server, clientIdFromQuery)
+    if (hostChanged) this.broadcastMembers()
 
     // 日本語を英数に変換
     // const roomId = this.state.id ? this.state.id.toString() : 'unknown'
+
+    const clientByName = (player: string): Client | undefined => {
+      for (const [ws, storedName] of this.names.entries()) {
+        if (storedName === player) return ws
+      }
+      return undefined
+    }
+
+    const gameDeps = {
+      send: (w: Client, o: unknown) => this.send(w, o),
+      broadcast: (o: unknown) => this.broadcast(o),
+      getPlayers: () => this.players(),
+      sendTo: (player: string, o: unknown) => {
+        const target = clientByName(player)
+        if (target) this.send(target, o)
+      }
+    }
 
     const lobbyDeps = {
       send: (w: Client, o: unknown) => this.send(w, o),
@@ -142,11 +161,7 @@ export class Room {
         round: this.game.state.round,
         turn: this.game.currentTurnName(),
       })
-    }
-    const gameDeps = {
-      send: (w: Client, o: unknown) => this.send(w, o),
-      broadcast: (o: unknown) => this.broadcast(o),
-      getPlayers: () => this.players(),
+      this.game.sendHandSnapshot(gameDeps, name)
     }
 
     const promoteToGame = () => {
@@ -176,11 +191,8 @@ export class Room {
 
         if (msg && msg.type === 'join') {
           if (typeof msg.clientId === 'string') {
-            const hadId = this.clientIds.has(server)
-            this.ensureClientId(server, msg.clientId)
-            if (!hadId && this.hostClientId === msg.clientId) {
-              this.broadcastMembers()
-            }
+            const hostChanged = this.ensureClientId(server, msg.clientId)
+            if (hostChanged) this.broadcastMembers()
           }
           return
         }
@@ -217,7 +229,9 @@ export class Room {
       this.clients.delete(server)
       this.names.delete(server)
       this.clientIds.delete(server)
-      this.refreshHostAfterRemoval(removedId)
+      if (removedId && removedId === this.hostClientId) {
+        this.hostClientId = null
+      }
 
       this.broadcast({
         type: 'system',
@@ -230,6 +244,7 @@ export class Room {
       if (this.clients.size === 0) {
         this.phase = 'lobby'
         this.game = new GameEngine()
+        // ホストの clientId は保持するが、アクティブな接続はいない
         this.hostClientId = null
         this.broadcast({
           type: 'system',

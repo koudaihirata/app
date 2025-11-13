@@ -59,6 +59,10 @@
   transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
+.cardSelectable {
+  cursor: pointer;
+}
+
 .cardIsTurn {
   border-color: #f6ad55;
   transform: translateY(-2px);
@@ -66,6 +70,16 @@
 
 .cardIsSelf {
   border-color: #63b3ed;
+}
+
+.cardIsTarget {
+  border-color: #ed8936;
+  box-shadow: 0 0 0 2px rgba(237, 137, 54, 0.25);
+}
+
+.cardSelected {
+  border-color: #f56565;
+  box-shadow: 0 0 0 3px rgba(245, 101, 101, 0.35);
 }
 
 .playerHeader {
@@ -134,6 +148,93 @@
 .turnInfo {
   font-weight: 600;
   color: #2d3748;
+}
+
+.handArea {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.handLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4a5568;
+}
+
+.handCards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.emptyHand {
+  color: #a0aec0;
+  font-size: 13px;
+}
+
+.mulliganRow {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.mulliganBtn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  background: #805ad5;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mulliganBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.mulliganHint {
+  font-size: 12px;
+  color: #718096;
+}
+
+.cardToken {
+  border: 1px solid #cbd5f5;
+  background: #fff;
+  border-radius: 10px;
+  padding: 8px 12px;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.cardToken:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cardToken:not(:disabled):hover {
+  transform: translateY(-2px);
+  border-color: #7f9cf5;
+}
+
+.cardName {
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.cardDetail {
+  font-size: 12px;
+  color: #4a5568;
 }
 
 .cardButtons {

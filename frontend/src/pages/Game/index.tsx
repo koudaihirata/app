@@ -13,12 +13,15 @@ const initS: S = { players:[], hp:{}, round:1, turn:'' }
 const MAX_HP = 10
 const CLIENT_ID_STORAGE_KEY = 'rooms:clientId'
 
+type DefenseSnapshot = { attacker: string; target: string; damage: number; cardId?: number }
 type GameStartedMsg = { type: 'game_started'; players?: string[]; hp?: Record<string, number>; round?: number; turn?: string }
-type StateMsg = { type: 'state'; hp?: Record<string, number>; round?: number; turn?: string }
-type PlayedMsg = { type: 'played'; delta?: { hp?: Record<string, number> }; next?: { round?: number; turn?: string } }
+type StateMsg = { type: 'state'; hp?: Record<string, number>; round?: number; turn?: string; phase?: 'action' | 'defense'; defense?: DefenseSnapshot }
+type PlayedMsg = { type: 'played'; delta?: { hp?: Record<string, number> }; next?: { round?: number; turn?: string }; defense?: { by: string; cardId?: number; blocked: number } }
 type GameOverMsg = { type: 'game_over'; winner?: string }
 type PhaseChangedMsg = { type: 'phase_changed'; phase: 'lobby' | 'game' }
-type GameWsMsg = GameStartedMsg | StateMsg | PlayedMsg | GameOverMsg | PhaseChangedMsg
+type DefenseRequestedMsg = { type: 'defense_requested'; attacker: string; target: string; damage: number; cardId: number }
+type HandUpdateMsg = { type: 'hand_update'; hand: number[] }
+type GameWsMsg = GameStartedMsg | StateMsg | PlayedMsg | GameOverMsg | PhaseChangedMsg | DefenseRequestedMsg | HandUpdateMsg
 
 const isGameWsMsg = (msg: unknown): msg is GameWsMsg => {
     if (!msg || typeof msg !== 'object') return false
@@ -28,6 +31,8 @@ const isGameWsMsg = (msg: unknown): msg is GameWsMsg => {
         || type === 'played'
         || type === 'game_over'
         || type === 'phase_changed'
+        || type === 'defense_requested'
+        || type === 'hand_update'
 }
 
 const mergePlayers = (current: string[], incoming: string[]) => {
@@ -53,6 +58,23 @@ const resolveClientId = () => {
     }
 }
 
+type CardCategory = 'attack' | 'defense' | 'heal'
+type CardMeta = {
+    id: number
+    label: string
+    detail: string
+    category: CardCategory
+    requiresTarget?: boolean
+}
+
+const CARD_LIBRARY: Record<number, CardMeta> = {
+    1: { id: 1, label: '攻撃 2', detail: 'ターゲットへ2ダメージ', category: 'attack', requiresTarget: true },
+    2: { id: 2, label: '強攻撃 3', detail: 'ターゲットへ3ダメージ', category: 'attack', requiresTarget: true },
+    3: { id: 3, label: '防御 2', detail: '攻撃を2軽減', category: 'defense' },
+    4: { id: 4, label: '防御 3', detail: '攻撃を3軽減', category: 'defense' },
+    5: { id: 5, label: '回復 +2', detail: '自分のHPを2回復', category: 'heal' },
+}
+
 export default function Game() {
     const [sp] = useSearchParams()
     const navigate = useNavigate()
@@ -61,8 +83,17 @@ export default function Game() {
     const wsRef = useRef<WebSocket|null>(null)
     const playersRef = useRef<string[]>(initS.players)
     const [st, setSt] = useState<S>(initS)
+    const [hand, setHand] = useState<number[]>([])
+    const [phase, setPhase] = useState<'action' | 'defense'>('action')
+    const [defensePrompt, setDefensePrompt] = useState<DefenseSnapshot | null>(null)
     const isMyTurn = st.turn === name
+    const [selectedTarget, setSelectedTarget] = useState<string | null>(null)
     const clientIdRef = useRef<string>(resolveClientId())
+    const isDefenseTurn = phase === 'defense' && defensePrompt?.target === name
+    const canPlayAttackCard = phase === 'action' && isMyTurn
+    const canSelectTarget = canPlayAttackCard
+    const allDefenseHand = hand.length === 3 && hand.every(cardId => CARD_LIBRARY[cardId]?.category === 'defense')
+    const canMulligan = canPlayAttackCard && allDefenseHand
 
     useEffect(() => {
         playersRef.current = st.players
@@ -76,6 +107,9 @@ export default function Game() {
         const returnToRooms = () => {
             if (navigated) return
             navigated = true
+            setDefensePrompt(null)
+            setPhase('action')
+            setHand([])
             const navState = {
                 joined: true,
                 roomId: room,
@@ -122,6 +156,10 @@ export default function Game() {
                             round: typedMsg.round ?? 1,
                             turn: typedMsg.turn ?? ''
                         })
+                        setHand([])
+                        setPhase('action')
+                        setDefensePrompt(null)
+                        setSelectedTarget(null)
                         break
                     case 'state':
                         setSt(prev => {
@@ -135,6 +173,8 @@ export default function Game() {
                                 turn: typedMsg.turn ?? prev.turn
                             }
                         })
+                        setPhase(typedMsg.phase ?? 'action')
+                        setDefensePrompt(typedMsg.defense ?? null)
                         break
                     case 'played':
                         setSt(prev => {
@@ -154,15 +194,35 @@ export default function Game() {
                                 turn: typedMsg.next?.turn ?? prev.turn
                             }
                         })
+                        setPhase('action')
+                        setDefensePrompt(null)
+                        setSelectedTarget(null)
                         break
                     case 'game_over':
                         alert(`勝者: ${typedMsg.winner ?? '不明'}`)
+                        setDefensePrompt(null)
                         returnToRooms()
                         break
                     case 'phase_changed':
                         if (typedMsg.phase === 'lobby') {
                             returnToRooms()
                         }
+                        setDefensePrompt(null)
+                        setPhase('action')
+                        break
+                    case 'defense_requested':
+                        setDefensePrompt({
+                            attacker: typedMsg.attacker,
+                            target: typedMsg.target,
+                            damage: typedMsg.damage,
+                            cardId: typedMsg.cardId
+                        })
+                        setPhase('defense')
+                        setSelectedTarget(null)
+                        break
+                    case 'hand_update':
+                        console.log('hand_update', typedMsg.hand)
+                        setHand(typedMsg.hand ?? [])
                         break
                     default:
                         console.warn('未処理のタイプを受信', typedMsg)
@@ -176,13 +236,49 @@ export default function Game() {
         }
     }, [room, name, navigate])
 
-    const play = (cardId: number, target?: string) => {
+    useEffect(() => {
+        if (!canPlayAttackCard) {
+            setSelectedTarget(null)
+        }
+    }, [canPlayAttackCard])
+
+    const requiresTarget = (cardId: number) => CARD_LIBRARY[cardId]?.requiresTarget ?? false
+    const isDefenseCard = (cardId: number) => CARD_LIBRARY[cardId]?.category === 'defense'
+
+    const play = (cardId: number) => {
         if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
-        wsRef.current.send(JSON.stringify({ type:'play', cardId, target }))
+        if (phase === 'defense') {
+            if (!isDefenseTurn) return
+            if (!isDefenseCard(cardId)) return
+        } else {
+            if (!canPlayAttackCard) return
+            if (isDefenseCard(cardId)) return
+        }
+        const payload: { type: 'play'; cardId: number; target?: string } = { type: 'play', cardId }
+        if (phase === 'action' && requiresTarget(cardId) && selectedTarget && selectedTarget !== name) {
+            payload.target = selectedTarget
+        }
+        wsRef.current.send(JSON.stringify(payload))
+        if (phase === 'action' && requiresTarget(cardId)) {
+            setSelectedTarget(null)
+        }
     }
     const endTurn = () => {
         if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+        if (!canPlayAttackCard) return
         wsRef.current.send(JSON.stringify({ type:'end_turn' }))
+    }
+
+    const skipDefense = () => {
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+        if (!isDefenseTurn) return
+        wsRef.current.send(JSON.stringify({ type:'end_turn' }))
+    }
+
+    const mulligan = () => {
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+        if (!canMulligan) return
+        wsRef.current.send(JSON.stringify({ type:'mulligan' }))
     }
 
     const hpPercent = (player: string) => {
@@ -191,6 +287,26 @@ export default function Game() {
     }
 
     const playersToDisplay = st.players.length ? st.players : Object.keys(st.hp)
+    const defenseTarget = defensePrompt?.target
+
+    let turnInfoMessage = ''
+    if (phase === 'defense') {
+        if (defensePrompt) {
+            if (isDefenseTurn) {
+                turnInfoMessage = `${defensePrompt.attacker} の攻撃(${defensePrompt.damage})を防御してください`
+            } else {
+                turnInfoMessage = `${defensePrompt.target} が防御処理中です`
+            }
+        } else {
+            turnInfoMessage = '防御処理中…'
+        }
+    } else if (canPlayAttackCard) {
+        turnInfoMessage = selectedTarget
+            ? `あなたのターン: ${selectedTarget} をターゲット中`
+            : 'あなたのターンです。攻撃対象を選んでください'
+    } else {
+        turnInfoMessage = `${st.turn || '---'} のターンです。`
+    }
 
     return (
         <div className={styles.page}>
@@ -215,10 +331,24 @@ export default function Game() {
                     const classes = [
                         styles.playerCard,
                         player === st.turn ? styles.cardIsTurn : '',
-                        player === name ? styles.cardIsSelf : ''
+                        player === name ? styles.cardIsSelf : '',
+                        defenseTarget === player ? styles.cardIsTarget : '',
+                        canSelectTarget && player !== name && hp > 0 ? styles.cardSelectable : '',
+                        selectedTarget === player ? styles.cardSelected : ''
                     ].join(' ').trim()
                     return (
-                        <div key={player} className={classes}>
+                        <div
+                            key={player}
+                            className={classes}
+                            onClick={() => {
+                                if (!canSelectTarget) return
+                                if (player === name) return
+                                if (hp <= 0) return
+                                setSelectedTarget(prev => prev === player ? null : player)
+                            }}
+                            role={canSelectTarget && player !== name && hp > 0 ? 'button' : undefined}
+                            aria-pressed={canSelectTarget && selectedTarget === player}
+                        >
                             <div className={styles.playerHeader}>
                                 <p className={styles.playerName}>
                                     {player}
@@ -239,23 +369,50 @@ export default function Game() {
             </section>
 
             <section className={styles.actions}>
-                <div className={styles.turnInfo}>
-                    {isMyTurn ? 'あなたのターンです。カードを選択してください。' : `${st.turn || '---'} のターンです。`}
+                <div className={styles.turnInfo}>{turnInfoMessage}</div>
+                <div className={styles.handArea}>
+                    <p className={styles.handLabel}>手札</p>
+                    <div className={styles.handCards}>
+                        {hand.length === 0 && <span className={styles.emptyHand}>カードなし</span>}
+                        {hand.map((cardId, idx) => {
+                            const meta = CARD_LIBRARY[cardId]
+                            if (!meta) return null
+                            const usable = meta.category === 'defense'
+                                ? isDefenseTurn
+                                : canPlayAttackCard
+                            return (
+                                <button
+                                    key={`${cardId}-${idx}`}
+                                    className={styles.cardToken}
+                                    disabled={!usable}
+                                    onClick={() => play(cardId)}
+                                >
+                                    <span className={styles.cardName}>{meta.label}</span>
+                                    <span className={styles.cardDetail}>{meta.detail}</span>
+                                </button>
+                            )
+                        })}
+                    </div>
+                    <div className={styles.mulliganRow}>
+                        <button className={styles.mulliganBtn} disabled={!canMulligan} onClick={mulligan}>
+                            手札を引き直す
+                        </button>
+                        <span className={styles.mulliganHint}>防御カード3枚のときのみ使用可（ターン終了）</span>
+                    </div>
                 </div>
-                <div className={styles.cardButtons}>
-                    <button className={styles.cardBtn} disabled={!isMyTurn} onClick={() => play(1)}>
-                        攻撃 2ダメージ (ID:1)
-                    </button>
-                    <button className={styles.cardBtn} disabled={!isMyTurn} onClick={() => play(2)}>
-                        強攻撃 3ダメージ (ID:2)
-                    </button>
-                    <button className={styles.cardBtn} disabled={!isMyTurn} onClick={() => play(5)}>
-                        回復 +2 (ID:5)
-                    </button>
-                    <button className={styles.cardBtn} disabled={!isMyTurn} onClick={endTurn}>
-                        ターン終了
-                    </button>
-                </div>
+                {phase === 'defense' && defensePrompt ? (
+                    <div className={styles.cardButtons}>
+                        <button className={styles.cardBtn} disabled={!isDefenseTurn} onClick={skipDefense}>
+                            防御しない
+                        </button>
+                    </div>
+                ) : (
+                    <div className={styles.cardButtons}>
+                        <button className={styles.cardBtn} disabled={!canPlayAttackCard} onClick={endTurn}>
+                            ターン終了
+                        </button>
+                    </div>
+                )}
             </section>
         </div>
     )

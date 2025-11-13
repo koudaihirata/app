@@ -14,6 +14,7 @@ export type InboundWsMsg =
     | { type: 'start' }                 // ロビー→ゲームへ
     | { type: 'play'; cardId: number; target?: string }
     | { type: 'end_turn' }
+    | { type: 'mulligan' }
     | { type: 'sync' }
 
 /** サーバー → クライアント */
@@ -25,8 +26,10 @@ export type OutboundWsMsg =
     | { type: 'pong'; at: number }
     | { type: 'phase_changed'; phase: Phase }
     | { type: 'game_started'; players: string[]; hp: Record<string,number>; round: number; turn: string; deckVer: number }
-    | { type: 'state'; hp: Record<string,number>; round: number; turn: string }
-    | { type: 'played'; by: string; cardId: number; target?: string; delta: { hp: Record<string,number> }; next?: { round: number; turn: string } }
+    | { type: 'state'; hp: Record<string,number>; round: number; turn: string; phase?: 'action' | 'defense'; defense?: { attacker: string; target: string; damage: number } }
+    | { type: 'defense_requested'; attacker: string; target: string; damage: number; cardId: number }
+    | { type: 'played'; by: string; cardId: number; target?: string; delta: { hp: Record<string,number> }; next?: { round: number; turn: string }; defense?: { by: string; cardId?: number; blocked: number } }
+    | { type: 'hand_update'; hand: number[] }
     | { type: 'game_over'; winner: string }
     | { type: 'error'; text: string; code?: string }
 
