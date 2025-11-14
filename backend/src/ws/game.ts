@@ -35,6 +35,10 @@ export type GameState = {
     lastActor?: string
 }
 
+const isAttackCard = (id: number) => Math.floor(id / 100) === 1
+const isDefenseCard = (id: number) => Math.floor(id / 100) === 2
+const isHealCard = (id: number) => Math.floor(id / 100) === 3
+
 export class GameEngine {
     state: GameState = {
         started: false,
@@ -77,7 +81,7 @@ export class GameEngine {
     }
 
     buildDeck() {
-        const ids = [1,1,2,2,3,3,4,4,5,5]
+        const ids = [101,101,102,102,201,202,301,301]
         for (let i = ids.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1))
             ;[ids[i], ids[j]] = [ids[j], ids[i]]
@@ -238,6 +242,7 @@ export class GameEngine {
             return
         }
     }
+    
 
     private handleActionPlay(deps: GameDeps, ws: Client, actor: string, parsed: { cardId: number; target?: string }): 'game_over' | void {
         if (!this.state.started) { deps.send(ws, { type:'error', text:'ゲーム未開始' }); return }
@@ -245,11 +250,25 @@ export class GameEngine {
 
         const { cardId, target } = parsed
 
-        if (cardId === 1 || cardId === 2) {
+        /* 攻撃カード */
+        if (isAttackCard(cardId)) {
             const targetName = this.resolveTarget(actor, target)
             if (!targetName) { deps.send(ws, { type:'error', text:'攻撃可能なターゲットがいません' }); return }
             if (!this.useCard(deps, actor, cardId)) return
-            const damage = cardId === 1 ? 2 : 3
+
+            let damage = 0
+            switch (cardId) {
+                case 101:
+                    damage = 2
+                    break;
+                case 102:
+                    damage = 3
+                    break;
+                default:
+                    deps.send(ws, { type:'error', text:`未知の攻撃カード: ${cardId}` })
+                    return
+            }
+
             this.state.pendingDefense = { attacker: actor, target: targetName, cardId, damage, totalDamage: damage, blocked: 0, cardsUsed: [] }
             this.state.phase = 'defense'
             deps.broadcast({
@@ -262,9 +281,21 @@ export class GameEngine {
             return
         }
 
-        if (cardId === 5) {
+        /* 回復カード */
+        if (isHealCard(cardId)) {
             if (!this.useCard(deps, actor, cardId)) return
-            const healValue = 2
+
+            let healValue = 0
+            switch (cardId) {
+                case 301:
+                    healValue = 2
+                    break;
+            
+                default:
+                    deps.send(ws, { type:'error', text:`未知の回復カード: ${cardId}` })
+                    return
+            }
+
             const cur = this.state.hp.get(actor) ?? 0
             this.state.hp.set(actor, cur + healValue)
             const nextInfo = this.advanceTurnInfo(actor)
@@ -278,7 +309,8 @@ export class GameEngine {
             return
         }
 
-        if (cardId === 3 || cardId === 4) {
+        /* 防御カード */
+        if (isDefenseCard(cardId)) {
             deps.send(ws, { type:'error', text:'防御カードは攻撃を受けたターンのみ使用できます' })
             return
         }
@@ -296,12 +328,25 @@ export class GameEngine {
             deps.send(ws, { type:'error', text:'現在の防御ターンではありません' })
             return
         }
-        if (parsed.cardId !== 3 && parsed.cardId !== 4) {
+        if (!isDefenseCard(parsed.cardId)) {
             deps.send(ws, { type:'error', text:'使用できるのは防御カードのみです' })
             return
         }
         if (!this.useCard(deps, actor, parsed.cardId)) return
-        const defenseValue = parsed.cardId === 3 ? 2 : 3
+
+        let defenseValue = 0
+        switch (parsed.cardId) {
+            case 201:
+                defenseValue = 2
+                break;
+            case 202:
+                defenseValue = 3
+                break;
+            default:
+                deps.send(ws, { type:'error', text:`未知の防御カード: ${parsed.cardId}` })
+                return
+        }
+
         pending.damage = Math.max(0, pending.damage - defenseValue)
         pending.blocked += defenseValue
         pending.cardsUsed.push(parsed.cardId)
@@ -388,7 +433,7 @@ export class GameEngine {
             this.sendError(deps, actor, '手札が3枚揃っていません')
             return
         }
-        const allDefense = hand.every(card => card === 3 || card === 4)
+        const allDefense = hand.every(card => isDefenseCard(card))
         if (!allDefense) {
             this.sendError(deps, actor, '防御カード3枚のときだけ引き直しできます')
             return

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { baseURL } from '../../utils/baseURL'
 import styles from './styles.module.css'
+import { CARD_LIBRARY } from '../../utils/cards'
 
 type S = {
     players: string[]
@@ -56,23 +57,6 @@ const resolveClientId = () => {
     } catch {
         return fallback()
     }
-}
-
-type CardCategory = 'attack' | 'defense' | 'heal'
-type CardMeta = {
-    id: number
-    label: string
-    detail: string
-    category: CardCategory
-    requiresTarget?: boolean
-}
-
-const CARD_LIBRARY: Record<number, CardMeta> = {
-    1: { id: 1, label: '攻撃 2', detail: 'ターゲットへ2ダメージ', category: 'attack', requiresTarget: true },
-    2: { id: 2, label: '強攻撃 3', detail: 'ターゲットへ3ダメージ', category: 'attack', requiresTarget: true },
-    3: { id: 3, label: '防御 2', detail: '攻撃を2軽減', category: 'defense' },
-    4: { id: 4, label: '防御 3', detail: '攻撃を3軽減', category: 'defense' },
-    5: { id: 5, label: '回復 +2', detail: '自分のHPを2回復', category: 'heal' },
 }
 
 export default function Game() {
