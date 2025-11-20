@@ -14,6 +14,7 @@ export type InboundWsMsg =
     | { type: 'start' }                 // ロビー→ゲームへ
     | { type: 'play'; cardId: number; target?: string }
     | { type: 'end_turn' }
+    | { type: 'claim_host' }
     | { type: 'mulligan' }
     | { type: 'sync' }
 

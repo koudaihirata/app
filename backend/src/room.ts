@@ -54,6 +54,10 @@ export class Room {
 
     return false
   }
+  private forceSetHost(clientId: string) {
+    this.preferredHostId = clientId
+    this.hostClientId = clientId
+  }
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url)
@@ -92,6 +96,9 @@ export class Room {
         this.clientIds.delete(existingWs)
         if (removedId && removedId === this.hostClientId) {
           this.hostClientId = null
+        }
+        if (removedId && removedId === this.preferredHostId) {
+          this.preferredHostId = null
         }
         this.broadcastMembers()
       }
@@ -147,11 +154,13 @@ export class Room {
         server, name, roomName
       )
     } else {
-      // ゲームフェーズ：最新状態を渡す・必要ならensureStart
       this.game.ensureStarted({
-        broadcast:(o)=>this.broadcast(o),
-        send:(w,o)=>this.send(w,o), // 未使用
-        getPlayers:()=>this.players()
+        broadcast: (o) => this.broadcast(o),
+        send: (w, o) => this.send(w, o), // 未使用
+        getPlayers: () => this.players(),
+        sendTo: function (player: string, obj: unknown): void {
+          throw new Error('Function not implemented.');
+        }
       })
       // 参加者には現状通知
       this.send(server, { type:'phase_changed', phase:'game' })
@@ -197,6 +206,23 @@ export class Room {
           return
         }
 
+        if (msg && msg.type === 'claim_host') {
+          const clientId = this.clientIds.get(server)
+          if (!clientId) {
+            server.send(JSON.stringify({ type: 'error', text: 'clientIdが確認できません' }))
+            return
+          }
+          if (this.hostClientId && this.hostClientId !== clientId) {
+            server.send(JSON.stringify({ type: 'error', text: '既にホストが設定されています' }))
+            return
+          }
+          if (this.hostClientId === clientId) return
+          this.forceSetHost(clientId)
+          this.broadcastMembers()
+          this.broadcast({ type: 'system', text: `👑 ${name} がホストになりました`, at: Date.now() })
+          return
+        }
+
         if (this.phase === 'lobby') {
           const clientId = this.clientIds.get(server)
           handleLobbyMessage(lobbyDeps, server, name, clientId, msg, promoteToGame)
@@ -232,6 +258,9 @@ export class Room {
       if (removedId && removedId === this.hostClientId) {
         this.hostClientId = null
       }
+      if (removedId && removedId === this.preferredHostId) {
+        this.preferredHostId = null
+      }
 
       this.broadcast({
         type: 'system',
@@ -246,6 +275,7 @@ export class Room {
         this.game = new GameEngine()
         // ホストの clientId は保持するが、アクティブな接続はいない
         this.hostClientId = null
+        this.preferredHostId = null
         this.broadcast({
           type: 'system',
           text: '🔴 ルームは一旦リセットされました',

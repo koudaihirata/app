@@ -224,6 +224,11 @@ export default function Rooms() {
     dispatch(disconnected())
   }
 
+  const claimHost = () => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+    wsRef.current.send(JSON.stringify({ type: 'claim_host' }))
+  }
+
   useEffect(() => {
     if (!shouldReconnect.current) return
     if (state.connected) {
@@ -301,6 +306,16 @@ export default function Rooms() {
                 }
               }}
             />
+            {!state.hostId && (
+              <div className={styles.claimHostArea}>
+                <NormalBtn
+                  label='ホストになる'
+                  bg='#4a90e2'
+                  onClick={claimHost}
+                />
+                <p className={styles.claimHint}>ホスト不在時のみ利用できます</p>
+              </div>
+            )}
 
             <pre className={styles.systemLog}>
               { state.logs.slice().reverse().join('\n') }
