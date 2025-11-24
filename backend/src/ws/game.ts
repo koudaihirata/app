@@ -296,14 +296,16 @@ export class GameEngine {
                     return
             }
 
-            const cur = this.state.hp.get(actor) ?? 0
-            this.state.hp.set(actor, cur + healValue)
+            const targetName = target ?? actor
+            const cur = this.state.hp.get(targetName) ?? 0
+            this.state.hp.set(targetName, cur + healValue)
             const nextInfo = this.advanceTurnInfo(actor)
             deps.broadcast({
                 type:'played',
                 by: actor,
                 cardId,
-                delta:{ hp: { [actor]: healValue } },
+                target: targetName,
+                delta:{ hp: { [targetName]: healValue } },
                 next: nextInfo
             })
             return

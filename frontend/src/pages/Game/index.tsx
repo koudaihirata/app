@@ -239,13 +239,22 @@ export default function Game() {
             if (isDefenseCard(cardId)) return
         }
         const payload: { type: 'play'; cardId: number; target?: string } = { type: 'play', cardId }
-        if (phase === 'action' && requiresTarget(cardId) && selectedTarget && selectedTarget !== name) {
-            payload.target = selectedTarget
+        if (phase === 'action' && requiresTarget(cardId)) {
+            const meta = CARD_LIBRARY[cardId]
+            let targetChoice = selectedTarget
+            if (!targetChoice) {
+                if (meta?.category === 'heal') {
+                    targetChoice = name
+                } else if (meta?.category === 'attack') {
+                    targetChoice = defaultAttackTarget(name)
+                } else if (meta?.allowSelfTarget) {
+                    targetChoice = name
+                }
+            }
+            if (!targetChoice) return
+            payload.target = targetChoice
         }
         wsRef.current.send(JSON.stringify(payload))
-        if (phase === 'action' && requiresTarget(cardId)) {
-            setSelectedTarget(null)
-        }
     }
     const endTurn = () => {
         if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
@@ -272,6 +281,19 @@ export default function Game() {
 
     const playersToDisplay = st.players.length ? st.players : Object.keys(st.hp)
     const defenseTarget = defensePrompt?.target
+
+    const defaultAttackTarget = (current: string) => {
+        const order = st.players.length ? st.players : Object.keys(st.hp)
+        const idx = order.indexOf(current)
+        if (idx === -1 || order.length === 0) return null
+        for (let i = 1; i <= order.length; i++) {
+            const candidate = order[(idx + i) % order.length]
+            if ((st.hp[candidate] ?? 0) > 0) {
+                return candidate
+            }
+        }
+        return null
+    }
 
     let turnInfoMessage = ''
     if (phase === 'defense') {
@@ -317,7 +339,7 @@ export default function Game() {
                         player === st.turn ? styles.cardIsTurn : '',
                         player === name ? styles.cardIsSelf : '',
                         defenseTarget === player ? styles.cardIsTarget : '',
-                        canSelectTarget && player !== name && hp > 0 ? styles.cardSelectable : '',
+                        canSelectTarget && hp > 0 ? styles.cardSelectable : '',
                         selectedTarget === player ? styles.cardSelected : ''
                     ].join(' ').trim()
                     return (
@@ -326,11 +348,10 @@ export default function Game() {
                             className={classes}
                             onClick={() => {
                                 if (!canSelectTarget) return
-                                if (player === name) return
                                 if (hp <= 0) return
                                 setSelectedTarget(prev => prev === player ? null : player)
                             }}
-                            role={canSelectTarget && player !== name && hp > 0 ? 'button' : undefined}
+                            role={canSelectTarget && hp > 0 ? 'button' : undefined}
                             aria-pressed={canSelectTarget && selectedTarget === player}
                         >
                             <div className={styles.playerHeader}>
