@@ -69,7 +69,7 @@ export default function Game() {
     const [st, setSt] = useState<S>(initS)
     const [hand, setHand] = useState<number[]>([])
     const [phase, setPhase] = useState<'action' | 'defense'>('action')
-    const [selectedCard, setSelectedCard] = useState<number|null>(null)
+    const [selectedCardIndex, setSelectedCardIndex] = useState<number|null>(null)
     const [defensePrompt, setDefensePrompt] = useState<DefenseSnapshot | null>(null)
     const isMyTurn = st.turn === name
     const [selectedTarget, setSelectedTarget] = useState<string | null>(null)
@@ -145,7 +145,7 @@ export default function Game() {
                         setPhase('action')
                         setDefensePrompt(null)
                         setSelectedTarget(null)
-                        setSelectedCard(null)
+                        setSelectedCardIndex(null)
                         break
                     case 'state':
                         setSt(prev => {
@@ -183,7 +183,7 @@ export default function Game() {
                         setPhase('action')
                         setDefensePrompt(null)
                         setSelectedTarget(null)
-                        setSelectedCard(null)
+                        setSelectedCardIndex(null)
                         break
                     case 'game_over':
                         alert(`勝者: ${typedMsg.winner ?? '不明'}`)
@@ -196,7 +196,7 @@ export default function Game() {
                         }
                         setDefensePrompt(null)
                         setPhase('action')
-                        setSelectedCard(null)
+                        setSelectedCardIndex(null)
                         break
                     case 'defense_requested':
                         setDefensePrompt({
@@ -207,12 +207,12 @@ export default function Game() {
                         })
                         setPhase('defense')
                         setSelectedTarget(null)
-                        setSelectedCard(null)
+                        setSelectedCardIndex(null)
                         break
                     case 'hand_update':
                         console.log('hand_update', typedMsg.hand)
                         setHand(typedMsg.hand ?? [])
-                        setSelectedCard(null)
+                        setSelectedCardIndex(null)
                         break
                     default:
                         console.warn('未処理のタイプを受信', typedMsg)
@@ -229,7 +229,7 @@ export default function Game() {
     useEffect(() => {
         if (!canPlayAttackCard) {
             setSelectedTarget(null)
-            setSelectedCard(null)
+            setSelectedCardIndex(null)
         }
     }, [canPlayAttackCard])
 
@@ -266,12 +266,13 @@ export default function Game() {
 
     const commitAction = () => {
         if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+        const selectedCardId = selectedCardIndex !== null ? hand[selectedCardIndex] : null
         if (phase === 'defense') {
             if (!isDefenseTurn) return
-            if (selectedCard !== null) {
-                if (!isDefenseCard(selectedCard)) return
-                play(selectedCard)
-                setSelectedCard(null)
+            if (selectedCardId !== null) {
+                if (!isDefenseCard(selectedCardId)) return
+                play(selectedCardId)
+                setSelectedCardIndex(null)
             } else {
                 wsRef.current.send(JSON.stringify({ type:'end_turn' }))
             }
@@ -279,10 +280,10 @@ export default function Game() {
         }
         // action phase
         if (!canPlayAttackCard) return
-        if (selectedCard !== null) {
-            play(selectedCard)
-            if (requiresTarget(selectedCard)) setSelectedTarget(null)
-            setSelectedCard(null)
+        if (selectedCardId !== null) {
+            play(selectedCardId)
+            if (requiresTarget(selectedCardId)) setSelectedTarget(null)
+            setSelectedCardIndex(null)
         } else {
             wsRef.current.send(JSON.stringify({ type:'end_turn' }))
         }
@@ -419,11 +420,11 @@ export default function Game() {
                             return (
                                 <button
                                     key={`${cardId}-${idx}`}
-                                    className={`${styles.cardToken} ${selectedCard === cardId ? styles.cardTokenSelected : ''}`}
+                                    className={`${styles.cardToken} ${selectedCardIndex === idx ? styles.cardTokenSelected : ''}`}
                                     disabled={!usable}
                                     onClick={() => {
                                         if (!usable) return
-                                        setSelectedCard(prev => prev === cardId ? null : cardId)
+                                        setSelectedCardIndex(prev => prev === idx ? null : idx)
                                     }}
                                 >
                                     <span className={styles.cardName}>{meta.label}</span>
@@ -445,7 +446,7 @@ export default function Game() {
                         disabled={phase === 'defense' ? !isDefenseTurn : !canPlayAttackCard}
                         onClick={commitAction}
                     >
-                        {selectedCard ? '行動決定' : 'ターンエンド'}
+                        {selectedCardIndex !== null ? '行動決定' : phase === 'defense' ? '防御しない' : 'ターンエンド'}
                     </button>
                 </div>
             </section>
