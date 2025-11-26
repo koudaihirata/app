@@ -356,6 +356,13 @@ export class GameEngine {
         if (pending.damage <= 0) {
             return this.finishPendingDefense(deps)
         }
+        deps.broadcast({
+            type: 'defense_requested',
+            attacker: pending.attacker,
+            target: pending.target,
+            damage: pending.damage,
+            cardId: pending.cardId
+        })
         return
     }
 

@@ -227,6 +227,12 @@
   border-color: #7f9cf5;
 }
 
+.cardTokenSelected {
+  border-color: #f56565;
+  box-shadow: 0 0 0 2px rgba(245, 101, 101, 0.25);
+  transform: translateY(-2px);
+}
+
 .cardName {
   font-weight: 600;
   color: #2d3748;

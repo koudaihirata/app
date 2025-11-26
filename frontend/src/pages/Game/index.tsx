@@ -69,13 +69,14 @@ export default function Game() {
     const [st, setSt] = useState<S>(initS)
     const [hand, setHand] = useState<number[]>([])
     const [phase, setPhase] = useState<'action' | 'defense'>('action')
+    const [selectedCard, setSelectedCard] = useState<number|null>(null)
     const [defensePrompt, setDefensePrompt] = useState<DefenseSnapshot | null>(null)
     const isMyTurn = st.turn === name
     const [selectedTarget, setSelectedTarget] = useState<string | null>(null)
     const clientIdRef = useRef<string>(resolveClientId())
     const isDefenseTurn = phase === 'defense' && defensePrompt?.target === name
     const canPlayAttackCard = phase === 'action' && isMyTurn
-    const canSelectTarget = canPlayAttackCard
+    const canSelectTarget = phase === 'action'
     const allDefenseHand = hand.length === 3 && hand.every(cardId => CARD_LIBRARY[cardId]?.category === 'defense')
     const canMulligan = canPlayAttackCard && allDefenseHand
 
@@ -144,6 +145,7 @@ export default function Game() {
                         setPhase('action')
                         setDefensePrompt(null)
                         setSelectedTarget(null)
+                        setSelectedCard(null)
                         break
                     case 'state':
                         setSt(prev => {
@@ -181,6 +183,7 @@ export default function Game() {
                         setPhase('action')
                         setDefensePrompt(null)
                         setSelectedTarget(null)
+                        setSelectedCard(null)
                         break
                     case 'game_over':
                         alert(`勝者: ${typedMsg.winner ?? '不明'}`)
@@ -193,6 +196,7 @@ export default function Game() {
                         }
                         setDefensePrompt(null)
                         setPhase('action')
+                        setSelectedCard(null)
                         break
                     case 'defense_requested':
                         setDefensePrompt({
@@ -203,10 +207,12 @@ export default function Game() {
                         })
                         setPhase('defense')
                         setSelectedTarget(null)
+                        setSelectedCard(null)
                         break
                     case 'hand_update':
                         console.log('hand_update', typedMsg.hand)
                         setHand(typedMsg.hand ?? [])
+                        setSelectedCard(null)
                         break
                     default:
                         console.warn('未処理のタイプを受信', typedMsg)
@@ -223,6 +229,7 @@ export default function Game() {
     useEffect(() => {
         if (!canPlayAttackCard) {
             setSelectedTarget(null)
+            setSelectedCard(null)
         }
     }, [canPlayAttackCard])
 
@@ -256,17 +263,41 @@ export default function Game() {
         }
         wsRef.current.send(JSON.stringify(payload))
     }
-    const endTurn = () => {
-        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
-        if (!canPlayAttackCard) return
-        wsRef.current.send(JSON.stringify({ type:'end_turn' }))
-    }
 
-    const skipDefense = () => {
+    const commitAction = () => {
         if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
-        if (!isDefenseTurn) return
-        wsRef.current.send(JSON.stringify({ type:'end_turn' }))
+        if (phase === 'defense') {
+            if (!isDefenseTurn) return
+            if (selectedCard !== null) {
+                if (!isDefenseCard(selectedCard)) return
+                play(selectedCard)
+                setSelectedCard(null)
+            } else {
+                wsRef.current.send(JSON.stringify({ type:'end_turn' }))
+            }
+            return
+        }
+        // action phase
+        if (!canPlayAttackCard) return
+        if (selectedCard !== null) {
+            play(selectedCard)
+            if (requiresTarget(selectedCard)) setSelectedTarget(null)
+            setSelectedCard(null)
+        } else {
+            wsRef.current.send(JSON.stringify({ type:'end_turn' }))
+        }
     }
+    // const endTurn = () => {
+    //     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+    //     if (!canPlayAttackCard) return
+    //     wsRef.current.send(JSON.stringify({ type:'end_turn' }))
+    // }
+
+    // const skipDefense = () => {
+    //     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+    //     if (!isDefenseTurn) return
+    //     wsRef.current.send(JSON.stringify({ type:'end_turn' }))
+    // }
 
     const mulligan = () => {
         if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
@@ -388,9 +419,12 @@ export default function Game() {
                             return (
                                 <button
                                     key={`${cardId}-${idx}`}
-                                    className={styles.cardToken}
+                                    className={`${styles.cardToken} ${selectedCard === cardId ? styles.cardTokenSelected : ''}`}
                                     disabled={!usable}
-                                    onClick={() => play(cardId)}
+                                    onClick={() => {
+                                        if (!usable) return
+                                        setSelectedCard(prev => prev === cardId ? null : cardId)
+                                    }}
                                 >
                                     <span className={styles.cardName}>{meta.label}</span>
                                     <span className={styles.cardDetail}>{meta.detail}</span>
@@ -405,19 +439,15 @@ export default function Game() {
                         <span className={styles.mulliganHint}>防御カード3枚のときのみ使用可（ターン終了）</span>
                     </div>
                 </div>
-                {phase === 'defense' && defensePrompt ? (
-                    <div className={styles.cardButtons}>
-                        <button className={styles.cardBtn} disabled={!isDefenseTurn} onClick={skipDefense}>
-                            防御しない
-                        </button>
-                    </div>
-                ) : (
-                    <div className={styles.cardButtons}>
-                        <button className={styles.cardBtn} disabled={!canPlayAttackCard} onClick={endTurn}>
-                            ターン終了
-                        </button>
-                    </div>
-                )}
+                <div className={styles.cardButtons}>
+                    <button
+                        className={styles.cardBtn}
+                        disabled={phase === 'defense' ? !isDefenseTurn : !canPlayAttackCard}
+                        onClick={commitAction}
+                    >
+                        {selectedCard ? '行動決定' : 'ターンエンド'}
+                    </button>
+                </div>
             </section>
         </div>
     )
