@@ -349,15 +349,7 @@ export default function Game() {
     return (
         <div className={styles.page}>
             <header className={styles.header}>
-                <div>
-                    <p className={styles.roomLabel}>Room: {room || 'unknown'}</p>
-                    <p className={styles.selfLabel}>プレイヤー: {name || 'Guest'}</p>
-                </div>
-                <div className={styles.roundInfo}>
-                    <span>Round {st.round}</span>
-                    <span>|</span>
-                    <span>Turn: {st.turn || '-'}</span>
-                </div>
+                <p><span>Round {st.round}</span></p>
             </header>
 
             <section className={styles.playersBoard}>
@@ -366,43 +358,85 @@ export default function Game() {
                 )}
                 {playersToDisplay.map(player => {
                     const hp = st.hp[player] ?? 0
-                    const classes = [
-                        styles.playerCard,
-                        player === st.turn ? styles.cardIsTurn : '',
-                        player === name ? styles.cardIsSelf : '',
-                        defenseTarget === player ? styles.cardIsTarget : '',
-                        canSelectTarget && hp > 0 ? styles.cardSelectable : '',
-                        selectedTarget === player ? styles.cardSelected : ''
-                    ].join(' ').trim()
-                    return (
-                        <div
-                            key={player}
-                            className={classes}
-                            onClick={() => {
-                                if (!canSelectTarget) return
-                                if (hp <= 0) return
-                                setSelectedTarget(prev => prev === player ? null : player)
-                            }}
-                            role={canSelectTarget && hp > 0 ? 'button' : undefined}
-                            aria-pressed={canSelectTarget && selectedTarget === player}
-                        >
-                            <div className={styles.playerHeader}>
-                                <p className={styles.playerName}>
-                                    {player}
-                                    {player === name ? ' (You)' : ''}
-                                </p>
-                                {player === st.turn && <span className={styles.turnBadge}>現在のターン</span>}
+                    if (player === name) {
+                        const classes = [
+                            styles.playerCard,
+                            styles.myPlayerCard,
+                            defenseTarget === player ? styles.cardIsTarget : '',
+                            canSelectTarget && hp > 0 ? styles.cardSelectable : '',
+                            selectedTarget === player ? styles.cardSelected : ''
+                        ].join(' ').trim()
+                        return (
+                            <div
+                                key={player}
+                                className={classes}
+                                onClick={() => {
+                                    if (!canSelectTarget) return
+                                    if (hp <= 0) return
+                                    setSelectedTarget(prev => prev === player ? null : player)
+                                }}
+                                role={canSelectTarget && hp > 0 ? 'button' : undefined}
+                                aria-pressed={canSelectTarget && selectedTarget === player}
+                            >
+                                <div className={styles.playerHeader}>
+                                    <p className={styles.playerName}>
+                                        {player}
+                                    </p>
+                                    {player === st.turn && <span className={styles.turnBadge}>現在のターン</span>}
+                                </div>
+                                <div className={styles.hpRow}>
+                                    <span className={styles.hpValue}>HP {hp}</span>
+                                </div>
+                                <div className={styles.hpBarTrack}>
+                                    <div className={styles.hpBar} style={{ width: `${hpPercent(player)}%` }} />
+                                </div>
                             </div>
-                            <div className={styles.hpRow}>
-                                <span className={styles.hpLabel}>HP</span>
-                                <span className={styles.hpValue}>{hp}</span>
-                            </div>
-                            <div className={styles.hpBarTrack}>
-                                <div className={styles.hpBar} style={{ width: `${hpPercent(player)}%` }} />
-                            </div>
-                        </div>
-                    )
+                        )
+                    }
                 })}
+                <div className={styles.enemyPlayersBoard}>
+                    {playersToDisplay.map(player => {
+                        const hp = st.hp[player] ?? 0
+                        if (player !== name) {
+                            const classes = [
+                                styles.playerCard,
+                                styles.enemyPlayerCard,
+                                player === st.turn ? styles.cardIsTurn : '',
+                                player === name ? styles.cardIsSelf : '',
+                                defenseTarget === player ? styles.cardIsTarget : '',
+                                canSelectTarget && hp > 0 ? styles.cardSelectable : '',
+                                selectedTarget === player ? styles.cardSelected : ''
+                            ].join(' ').trim()
+                            return (
+                                <div
+                                    key={player}
+                                    className={classes}
+                                    onClick={() => {
+                                        if (!canSelectTarget) return
+                                        if (hp <= 0) return
+                                        setSelectedTarget(prev => prev === player ? null : player)
+                                    }}
+                                    role={canSelectTarget && hp > 0 ? 'button' : undefined}
+                                    aria-pressed={canSelectTarget && selectedTarget === player}
+                                >
+                                    <div className={styles.playerHeader}>
+                                        <p className={styles.playerName}>
+                                            {player}
+                                        </p>
+                                        {player === st.turn && <span className={styles.turnBadge}>現在のターン</span>}
+                                    </div>
+                                    <div className={styles.hpRow}>
+                                        <span className={styles.hpLabel}>HP</span>
+                                        <span className={styles.hpValue}>{hp}</span>
+                                    </div>
+                                    <div className={styles.hpBarTrack}>
+                                        <div className={styles.hpBar} style={{ width: `${hpPercent(player)}%` }} />
+                                    </div>
+                                </div>
+                            )
+                        }
+                    })}
+                </div>
             </section>
 
             <section className={styles.actions}>
