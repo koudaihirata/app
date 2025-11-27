@@ -75,8 +75,8 @@ export class Room {
     const server = pair[1]
     server.accept()
 
-    // 満員チェック：満員なら error を一発返して閉じる（参加登録はしない）
-    if (this.clients.size >= MAX_MEMBERS) {
+    // 満員チェック（ロビーのみ）。ゲーム進行中は再接続を許可する。
+    if (this.phase === 'lobby' && this.clients.size >= MAX_MEMBERS) {
       server.send(JSON.stringify({
         type: 'error',
         code: 'ROOM_FULL',
