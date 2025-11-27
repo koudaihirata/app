@@ -362,6 +362,7 @@ export default function Game() {
                         const classes = [
                             styles.playerCard,
                             styles.myPlayerCard,
+                            player === st.turn ? styles.cardIsTurn : '',
                             defenseTarget === player ? styles.cardIsTarget : '',
                             canSelectTarget && hp > 0 ? styles.cardSelectable : '',
                             selectedTarget === player ? styles.cardSelected : ''
@@ -382,10 +383,10 @@ export default function Game() {
                                     <p className={styles.playerName}>
                                         {player}
                                     </p>
-                                    {player === st.turn && <span className={styles.turnBadge}>現在のターン</span>}
-                                </div>
-                                <div className={styles.hpRow}>
-                                    <span className={styles.hpValue}>HP {hp}</span>
+                                    <div className={styles.hpRow}>
+                                        {/* {player === st.turn && <span className={styles.turnBadge}>現在のターン</span>} */}
+                                        <span className={styles.hpValue}>HP {hp}</span>
+                                    </div>
                                 </div>
                                 <div className={styles.hpBarTrack}>
                                     <div className={styles.hpBar} style={{ width: `${hpPercent(player)}%` }} />
@@ -423,11 +424,10 @@ export default function Game() {
                                         <p className={styles.playerName}>
                                             {player}
                                         </p>
-                                        {player === st.turn && <span className={styles.turnBadge}>現在のターン</span>}
-                                    </div>
-                                    <div className={styles.hpRow}>
-                                        <span className={styles.hpLabel}>HP</span>
-                                        <span className={styles.hpValue}>{hp}</span>
+                                        <div className={styles.hpRow}>
+                                            {/* {player === st.turn && <span className={styles.turnBadge}>現在のターン</span>} */}
+                                            <span className={styles.hpValue}>HP {hp}</span>
+                                        </div>
                                     </div>
                                     <div className={styles.hpBarTrack}>
                                         <div className={styles.hpBar} style={{ width: `${hpPercent(player)}%` }} />
