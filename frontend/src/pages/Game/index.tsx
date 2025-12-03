@@ -77,8 +77,9 @@ export default function Game() {
     const isDefenseTurn = phase === 'defense' && defensePrompt?.target === name
     const canPlayAttackCard = phase === 'action' && isMyTurn
     const canSelectTarget = phase === 'action'
-    const allDefenseHand = hand.length === 3 && hand.every(cardId => CARD_LIBRARY[cardId]?.category === 'defense')
-    const canMulligan = canPlayAttackCard && allDefenseHand
+    // 手札引き直し関係
+    // const allDefenseHand = hand.length === 3 && hand.every(cardId => CARD_LIBRARY[cardId]?.category === 'defense')
+    // const canMulligan = canPlayAttackCard && allDefenseHand
 
     useEffect(() => {
         playersRef.current = st.players
@@ -300,19 +301,30 @@ export default function Game() {
     //     wsRef.current.send(JSON.stringify({ type:'end_turn' }))
     // }
 
-    const mulligan = () => {
-        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
-        if (!canMulligan) return
-        wsRef.current.send(JSON.stringify({ type:'mulligan' }))
-    }
+    // 手札引き直し
+    // const mulligan = () => {
+    //     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+    //     if (!canMulligan) return
+    //     wsRef.current.send(JSON.stringify({ type:'mulligan' }))
+    // }
 
     const hpPercent = (player: string) => {
         const value = st.hp[player] ?? 0
         return Math.max(0, Math.min(100, (value / MAX_HP) * 100))
     }
 
-    const playersToDisplay = st.players.length ? st.players : Object.keys(st.hp)
+    const playersToDisplay = (() => {
+        const ordered = st.players.length ? [...st.players] : [...Object.keys(st.hp)]
+        const idx = ordered.indexOf(name)
+        if (idx > 0) {
+            ordered.splice(idx, 1)
+            ordered.unshift(name)
+        }
+        return ordered
+    })()
     const defenseTarget = defensePrompt?.target
+    const selectedCardId = selectedCardIndex !== null ? hand[selectedCardIndex] : null
+    const selectedCardMeta = selectedCardId !== null ? CARD_LIBRARY[selectedCardId] : undefined
 
     const defaultAttackTarget = (current: string) => {
         const order = st.players.length ? st.players : Object.keys(st.hp)
@@ -327,83 +339,58 @@ export default function Game() {
         return null
     }
 
-    let turnInfoMessage = ''
-    if (phase === 'defense') {
-        if (defensePrompt) {
-            if (isDefenseTurn) {
-                turnInfoMessage = `${defensePrompt.attacker} の攻撃(${defensePrompt.damage})を防御してください`
-            } else {
-                turnInfoMessage = `${defensePrompt.target} が防御処理中です`
-            }
-        } else {
-            turnInfoMessage = '防御処理中…'
-        }
-    } else if (canPlayAttackCard) {
-        turnInfoMessage = selectedTarget
-            ? `あなたのターン: ${selectedTarget} をターゲット中`
-            : 'あなたのターンです。攻撃対象を選んでください'
-    } else {
-        turnInfoMessage = `${st.turn || '---'} のターンです。`
-    }
+    // let turnInfoMessage = ''
+    // if (phase === 'defense') {
+    //     if (defensePrompt) {
+    //         if (isDefenseTurn) {
+    //             turnInfoMessage = `${defensePrompt.attacker} の攻撃(${defensePrompt.damage})を防御してください`
+    //         } else {
+    //             turnInfoMessage = `${defensePrompt.target} が防御処理中です`
+    //         }
+    //     } else {
+    //         turnInfoMessage = '防御処理中…'
+    //     }
+    // } else if (canPlayAttackCard) {
+    //     turnInfoMessage = selectedTarget
+    //         ? `あなたのターン: ${selectedTarget} をターゲット中`
+    //         : 'あなたのターンです。攻撃対象を選んでください'
+    // } else {
+    //     turnInfoMessage = `${st.turn || '---'} のターンです。`
+    // }
 
     return (
         <div className={styles.page}>
-            <header className={styles.header}>
-                <p><span>Round {st.round}</span></p>
-            </header>
+            <div className={styles.resultArea}>
+                <header className={styles.header}>
+                    <p><span>Round {st.round}</span></p>
+                </header>
 
-            <section className={styles.playersBoard}>
-                {playersToDisplay.length === 0 && (
-                    <p className={styles.placeholder}>プレイヤー情報を待機中...</p>
-                )}
-                {playersToDisplay.map(player => {
-                    const hp = st.hp[player] ?? 0
-                    if (player === name) {
-                        const classes = [
-                            styles.playerCard,
-                            styles.myPlayerCard,
-                            player === st.turn ? styles.cardIsTurn : '',
-                            defenseTarget === player ? styles.cardIsTarget : '',
-                            canSelectTarget && hp > 0 ? styles.cardSelectable : '',
-                            selectedTarget === player ? styles.cardSelected : ''
-                        ].join(' ').trim()
-                        return (
-                            <div
-                                key={player}
-                                className={classes}
-                                onClick={() => {
-                                    if (!canSelectTarget) return
-                                    if (hp <= 0) return
-                                    setSelectedTarget(prev => prev === player ? null : player)
-                                }}
-                                role={canSelectTarget && hp > 0 ? 'button' : undefined}
-                                aria-pressed={canSelectTarget && selectedTarget === player}
-                            >
-                                <div className={styles.playerHeader}>
-                                    <p className={styles.playerName}>
-                                        {player}
-                                    </p>
-                                    <div className={styles.hpRow}>
-                                        {/* {player === st.turn && <span className={styles.turnBadge}>現在のターン</span>} */}
-                                        <span className={styles.hpValue}>HP {hp}</span>
-                                    </div>
-                                </div>
-                                <div className={styles.hpBarTrack}>
-                                    <div className={styles.hpBar} style={{ width: `${hpPercent(player)}%` }} />
-                                </div>
-                            </div>
-                        )
-                    }
-                })}
-                <div className={styles.enemyPlayersBoard}>
+                <section className={styles.playArea}>
+                    {selectedCardMeta ? (
+                        <div className={styles.selectedCardBar}>
+                            <span className={styles.selectedCardName}>{selectedCardMeta.label}</span>
+                            <span className={styles.selectedCardDetail}>{selectedCardMeta.detail}</span>
+                        </div>
+                    ):(
+                        <div className={styles.selectedCardBar}>
+                            <span className={styles.selectedCardDetail}>カードを選択してください</span>
+                        </div>
+                    )}
+                </section>
+            </div>
+
+            <div className={styles.selectArea}>
+                <section className={styles.playersBoard}>
+                    {playersToDisplay.length === 0 && (
+                        <p className={styles.placeholder}>プレイヤー情報を待機中...</p>
+                    )}
                     {playersToDisplay.map(player => {
                         const hp = st.hp[player] ?? 0
-                        if (player !== name) {
+                        if (player === name) {
                             const classes = [
                                 styles.playerCard,
-                                styles.enemyPlayerCard,
+                                styles.myPlayerCard,
                                 player === st.turn ? styles.cardIsTurn : '',
-                                player === name ? styles.cardIsSelf : '',
                                 defenseTarget === player ? styles.cardIsTarget : '',
                                 canSelectTarget && hp > 0 ? styles.cardSelectable : '',
                                 selectedTarget === player ? styles.cardSelected : ''
@@ -436,13 +423,50 @@ export default function Game() {
                             )
                         }
                     })}
-                </div>
-            </section>
-
-            <section className={styles.actions}>
-                <div className={styles.turnInfo}>{turnInfoMessage}</div>
-                <div className={styles.handArea}>
-                    <p className={styles.handLabel}>手札</p>
+                    <div className={styles.enemyPlayersBoard}>
+                        {playersToDisplay.map(player => {
+                            const hp = st.hp[player] ?? 0
+                            if (player !== name) {
+                                const classes = [
+                                    styles.playerCard,
+                                    styles.enemyPlayerCard,
+                                    player === st.turn ? styles.cardIsTurn : '',
+                                    player === name ? styles.cardIsSelf : '',
+                                    defenseTarget === player ? styles.cardIsTarget : '',
+                                    canSelectTarget && hp > 0 ? styles.cardSelectable : '',
+                                    selectedTarget === player ? styles.cardSelected : ''
+                                ].join(' ').trim()
+                                return (
+                                    <div
+                                        key={player}
+                                        className={classes}
+                                        onClick={() => {
+                                            if (!canSelectTarget) return
+                                            if (hp <= 0) return
+                                            setSelectedTarget(prev => prev === player ? null : player)
+                                        }}
+                                        role={canSelectTarget && hp > 0 ? 'button' : undefined}
+                                        aria-pressed={canSelectTarget && selectedTarget === player}
+                                    >
+                                        <div className={styles.playerHeader}>
+                                            <p className={styles.playerName}>
+                                                {player}
+                                            </p>
+                                            <div className={styles.hpRow}>
+                                                {/* {player === st.turn && <span className={styles.turnBadge}>現在のターン</span>} */}
+                                                <span className={styles.hpValue}>HP {hp}</span>
+                                            </div>
+                                        </div>
+                                        <div className={styles.hpBarTrack}>
+                                            <div className={styles.hpBar} style={{ width: `${hpPercent(player)}%` }} />
+                                        </div>
+                                    </div>
+                                )
+                            }
+                        })}
+                    </div>
+                </section>
+                <section className={styles.actions}>
                     <div className={styles.handCards}>
                         {hand.length === 0 && <span className={styles.emptyHand}>カードなし</span>}
                         {hand.map((cardId, idx) => {
@@ -467,13 +491,13 @@ export default function Game() {
                             )
                         })}
                     </div>
-                    <div className={styles.mulliganRow}>
+                    {/* <div className={styles.mulliganRow}>
                         <button className={styles.mulliganBtn} disabled={!canMulligan} onClick={mulligan}>
                             手札を引き直す
                         </button>
                         <span className={styles.mulliganHint}>防御カード3枚のときのみ使用可（ターン終了）</span>
-                    </div>
-                </div>
+                    </div> */}
+                </section>
                 <div className={styles.cardButtons}>
                     <button
                         className={styles.cardBtn}
@@ -483,7 +507,7 @@ export default function Game() {
                         {selectedCardIndex !== null ? '行動決定' : phase === 'defense' ? '防御しない' : 'ターンエンド'}
                     </button>
                 </div>
-            </section>
+            </div>
         </div>
     )
 }

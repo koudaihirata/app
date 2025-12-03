@@ -73,7 +73,7 @@ export function Reducer(state: State, action: WsAction): State {
                     action.line
                 ]
             }
-        case 'SET_MEMBERS':
+        case 'SET_MEMBERS': {
             const nextState: State = {
                 ...state,
                 members: action.members
@@ -82,6 +82,7 @@ export function Reducer(state: State, action: WsAction): State {
                 nextState.hostId = action.hostId ?? null
             }
             return nextState
+        }
     }
     throw new (class SystemException {})()
 }
