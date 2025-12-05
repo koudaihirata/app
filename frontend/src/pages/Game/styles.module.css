@@ -1,10 +1,14 @@
 .page {
-  min-height: 100vh;
-  padding: 24px;
+  height: 100vh;
+  padding: 0 24px;
   background: #f4f5f7;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+}
+
+.resultArea {
+  width: 100%;
+  height: 40%;
 }
 
 .header {
@@ -17,15 +21,89 @@
   }
 }
 
-.roomLabel {
-  font-weight: 600;
-  color: #2d3748;
+.playArea {
+  width: 100%;
+  height: 35vh;
+  display: flex;
+  align-items: center;
+
+  /* border: 1px solid tomato; */
 }
 
-.selfLabel {
-  font-size: 14px;
+.selectedCardBar {
+  height: 80%;
+  aspect-ratio: 125 / 202;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  overflow: hidden;
+  background: #99DD96;
+}
+
+.cardImg {
+  width: 85%;
+  height: 50%;
+  margin: 5% auto 0;
+  border-radius: 10px 10px 0 0;
+  background-color: #fff;
+
+  > img {
+    width: 90%;
+    height: 100%;
+    /* object-fit: cover; */
+  }
+}
+
+.cardWrap {
+  width: 100%;
+  height: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #D9D9D9;
+}
+
+.selectedCardName {
+  margin: 0;
+  width: 120%;
+  height: 35%;
+  background-color: #F4F3F3;
+  font-weight: bold;
+  box-shadow: 3px 3px 5px 0 rgba(0, 0, 0, 0.25);
+  transform: translateY(-8px) rotate(-5deg);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  
+
+  > span {
+    color: black;
+    font-size: 12px;
+  }
+  
+  .selectedCardNameLabel {
+    font-size: 20px;
+    -webkit-text-fill-color: white;
+    -webkit-text-stroke: .8px black;
+  }
+}
+
+.selectedCardDetail {
+  width: 80%;
+  margin: 8px auto 0;
+  font-size: 12px;
   color: #4a5568;
-  margin-top: 4px;
+}
+
+.selectArea {
+  height: 60%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 24px;
 }
 
 .playersBoard {
@@ -38,19 +116,19 @@
 }
 
 .enemyPlayersBoard {
-    display: grid;
-    gap: 16px;
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    flex-wrap: wrap;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  flex-wrap: wrap;
 
-    .enemyPlayerCard {
-      background: #fff;
-      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  .enemyPlayerCard {
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
 
-      .playerName {
-        font-size: 14px;
-      }
+    .playerName {
+      font-size: 14px;
     }
+  }
 }
 
 .placeholder {
@@ -144,28 +222,13 @@
 }
 
 .actions {
-  background: #fff;
-  border-radius: 16px;
-  padding: 20px;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  width: 100%;
+  padding: 24px 0;
 }
 
 .turnInfo {
   font-weight: 600;
   color: #2d3748;
-}
-
-.handArea {
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 12px;
-  background: #f8fafc;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
 }
 
 .handLabel {
@@ -175,7 +238,9 @@
 }
 
 .handCards {
+  width: 100%;
   display: flex;
+  justify-content: space-around;
   flex-wrap: wrap;
   gap: 8px;
 }
@@ -192,7 +257,7 @@
   margin-top: 8px;
 }
 
-.mulliganBtn {
+/* .mulliganBtn {
   padding: 8px 14px;
   border-radius: 8px;
   border: none;
@@ -210,19 +275,20 @@
 .mulliganHint {
   font-size: 12px;
   color: #718096;
-}
+} */
 
 .cardToken {
-  border: 1px solid #cbd5f5;
+  width: 80px;
+  aspect-ratio: 125 / 202;
   background: #fff;
   border-radius: 10px;
-  padding: 8px 12px;
-  min-width: 140px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
   cursor: pointer;
+  border: 2px solid #fff;
   transition: transform 0.2s ease, border-color 0.2s ease;
+  overflow: hidden;
+  padding: 0;
 }
 
 .cardToken:disabled {
@@ -231,14 +297,14 @@
 }
 
 .cardToken:not(:disabled):hover {
-  transform: translateY(-2px);
+  transform: translateY(-10px);
   border-color: #7f9cf5;
 }
 
 .cardTokenSelected {
   border-color: #f56565;
-  box-shadow: 0 0 0 2px rgba(245, 101, 101, 0.25);
-  transform: translateY(-2px);
+  /* box-shadow: 0 0 0 2px rgba(245, 101, 101, 0.25); */
+  transform: translateY(-10px);
 }
 
 .cardName {
@@ -247,8 +313,9 @@
 }
 
 .cardDetail {
-  font-size: 12px;
+  font-size: 8px;
   color: #4a5568;
+  margin: 0 auto;
 }
 
 .cardButtons {

@@ -368,8 +368,13 @@ export default function Game() {
                 <section className={styles.playArea}>
                     {selectedCardMeta ? (
                         <div className={styles.selectedCardBar}>
-                            <span className={styles.selectedCardName}>{selectedCardMeta.label}</span>
-                            <span className={styles.selectedCardDetail}>{selectedCardMeta.detail}</span>
+                            <div className={styles.cardImg}>
+                                <img src={`Group.svg`} />
+                            </div>
+                            <div className={styles.cardWrap}>
+                                <p className={styles.selectedCardName}><span className={styles.selectedCardNameLabel}>{selectedCardMeta.label}</span></p>
+                                <p className={styles.selectedCardDetail}>{selectedCardMeta.detail}</p>
+                            </div>
                         </div>
                     ):(
                         <div className={styles.selectedCardBar}>
@@ -485,8 +490,13 @@ export default function Game() {
                                         setSelectedCardIndex(prev => prev === idx ? null : idx)
                                     }}
                                 >
-                                    <span className={styles.cardName}>{meta.label}</span>
-                                    <span className={styles.cardDetail}>{meta.detail}</span>
+                                    <div className={styles.cardImg}>
+                                        <img src={`Group.svg`} />
+                                    </div>
+                                    <div className={styles.cardWrap}>
+                                        <p className={`${styles.selectedCardName} ${styles.cardName}`}><span>{meta.label}</span></p>
+                                        <p className={`${styles.selectedCardDetail} ${styles.cardDetail}`}>{meta.detail}相手に1ダメージ＋2ターンの間</p>
+                                    </div>
                                 </button>
                             )
                         })}
