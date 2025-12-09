@@ -8,7 +8,7 @@
 
 .resultArea {
   width: 100%;
-  height: 40%;
+  height: 45%;
 }
 
 .header {
@@ -39,7 +39,6 @@
   align-items: center;
   flex-direction: column;
   overflow: hidden;
-  background: #99DD96;
 }
 
 .cardImg {
@@ -98,7 +97,7 @@
 }
 
 .selectArea {
-  height: 60%;
+  height: 55%;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -117,7 +116,7 @@
 
 .enemyPlayersBoard {
   display: grid;
-  gap: 16px;
+  gap: 4px;
   grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   flex-wrap: wrap;
 
@@ -223,7 +222,7 @@
 
 .actions {
   width: 100%;
-  padding: 24px 0;
+  margin-top: 16px;
 }
 
 .turnInfo {
@@ -239,10 +238,14 @@
 
 .handCards {
   width: 100%;
+  height: 100%;
   display: flex;
   justify-content: space-around;
-  flex-wrap: wrap;
-  gap: 8px;
+  gap: 0;
+}
+
+.cardToken + .cardToken {
+  margin-left: -30px; /* gap は負値不可なので重ねる場合は負のマージンで調整 */
 }
 
 .emptyHand {
@@ -278,9 +281,8 @@
 } */
 
 .cardToken {
-  width: 80px;
+  height: 90%;
   aspect-ratio: 125 / 202;
-  background: #fff;
   border-radius: 10px;
   display: flex;
   flex-direction: column;
@@ -289,12 +291,28 @@
   transition: transform 0.2s ease, border-color 0.2s ease;
   overflow: hidden;
   padding: 0;
+  position: relative;
 }
 
 .cardToken:disabled {
-  opacity: 0.4;
   cursor: not-allowed;
+  position: relative;
+  border: 2px solid rgba(128, 128, 128, 0.4);
+
+  &::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-color: gray;
+    opacity: 0.4;
+  }
 }
+
+.handCards .cardToken:nth-child(1) { z-index: 1; }
+.handCards .cardToken:nth-child(2) { z-index: 2; }
+.handCards .cardToken:nth-child(3) { z-index: 3; }
+.handCards .cardToken:nth-child(4) { z-index: 4; }
 
 .cardToken:not(:disabled):hover {
   transform: translateY(-10px);
@@ -303,8 +321,12 @@
 
 .cardTokenSelected {
   border-color: #f56565;
-  /* box-shadow: 0 0 0 2px rgba(245, 101, 101, 0.25); */
   transform: translateY(-10px);
+}
+
+/* 選択中は常に最前面にする（nth-child 指定より後で、かつ高優先度） */
+.handCards .cardToken.cardTokenSelected {
+  z-index: 99 !important;
 }
 
 .cardName {
@@ -335,6 +357,10 @@
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
+.btnStyleAdjustment {
+  margin-top: 60px;
+}
+
 .cardBtn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -342,4 +368,15 @@
 
 .cardBtn:not(:disabled):hover {
   transform: translateY(-2px);
+}
+
+
+.heal {
+  background: #99DD96;
+}
+.defense {
+  background: #53659F;
+}
+.attack {
+  background: #CB4A4A;
 }

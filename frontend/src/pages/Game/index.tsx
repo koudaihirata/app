@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { baseURL } from '../../utils/baseURL'
 import styles from './styles.module.css'
-import { CARD_LIBRARY } from '../../utils/cards'
+import { CARD_LIBRARY, type CardCategory } from '../../utils/cards'
 
 type S = {
     players: string[]
@@ -23,6 +23,8 @@ type PhaseChangedMsg = { type: 'phase_changed'; phase: 'lobby' | 'game' }
 type DefenseRequestedMsg = { type: 'defense_requested'; attacker: string; target: string; damage: number; cardId: number }
 type HandUpdateMsg = { type: 'hand_update'; hand: number[] }
 type GameWsMsg = GameStartedMsg | StateMsg | PlayedMsg | GameOverMsg | PhaseChangedMsg | DefenseRequestedMsg | HandUpdateMsg
+
+const SPOT_CARD_ID = 9999
 
 const isGameWsMsg = (msg: unknown): msg is GameWsMsg => {
     if (!msg || typeof msg !== 'object') return false
@@ -71,6 +73,7 @@ export default function Game() {
     const [phase, setPhase] = useState<'action' | 'defense'>('action')
     const [selectedCardIndex, setSelectedCardIndex] = useState<number|null>(null)
     const [defensePrompt, setDefensePrompt] = useState<DefenseSnapshot | null>(null)
+    const [spotCardName, setSpotCardName] = useState<string>('近くのスポットカード')
     const isMyTurn = st.turn === name
     const [selectedTarget, setSelectedTarget] = useState<string | null>(null)
     const clientIdRef = useRef<string>(resolveClientId())
@@ -212,7 +215,13 @@ export default function Game() {
                         break
                     case 'hand_update':
                         console.log('hand_update', typedMsg.hand)
-                        setHand(typedMsg.hand ?? [])
+                        {
+                            const incoming = typedMsg.hand ?? []
+                            // 本来の3枚に、位置連動のオリジナルカード（非デッキ由来）を1枚追加表示する
+                            const nearestSpot = '近くのスポット' // TODO: 位置情報/API連携で最寄りスポット名を取得
+                            setSpotCardName(`${nearestSpot}のカード`)
+                            setHand([...incoming, SPOT_CARD_ID])
+                        }
                         setSelectedCardIndex(null)
                         break
                     default:
@@ -282,6 +291,7 @@ export default function Game() {
         // action phase
         if (!canPlayAttackCard) return
         if (selectedCardId !== null) {
+            if (selectedCardId === SPOT_CARD_ID) return
             play(selectedCardId)
             if (requiresTarget(selectedCardId)) setSelectedTarget(null)
             setSelectedCardIndex(null)
@@ -324,7 +334,18 @@ export default function Game() {
     })()
     const defenseTarget = defensePrompt?.target
     const selectedCardId = selectedCardIndex !== null ? hand[selectedCardIndex] : null
-    const selectedCardMeta = selectedCardId !== null ? CARD_LIBRARY[selectedCardId] : undefined
+    const selectedCardMeta = (() => {
+        if (selectedCardId === null) return undefined
+        if (selectedCardId === SPOT_CARD_ID) {
+            return {
+                id: SPOT_CARD_ID,
+                label: spotCardName,
+                detail: 'デッキとは別にAIが生成した特別カード',
+                category: 'attack' as const
+            }
+        }
+        return CARD_LIBRARY[selectedCardId]
+    })()
 
     const defaultAttackTarget = (current: string) => {
         const order = st.players.length ? st.players : Object.keys(st.hp)
@@ -358,6 +379,14 @@ export default function Game() {
     //     turnInfoMessage = `${st.turn || '---'} のターンです。`
     // }
 
+    const categoryClass: Record<CardCategory, string> = {
+        attack: styles.attack,
+        defense: styles.defense,
+        heal: styles.heal,
+    }
+
+    const categoryClassName = selectedCardMeta ? categoryClass[selectedCardMeta.category] : ''
+
     return (
         <div className={styles.page}>
             <div className={styles.resultArea}>
@@ -367,7 +396,7 @@ export default function Game() {
 
                 <section className={styles.playArea}>
                     {selectedCardMeta ? (
-                        <div className={styles.selectedCardBar}>
+                        <div className={`${styles.selectedCardBar} ${categoryClassName}`}>
                             <div className={styles.cardImg}>
                                 <img src={`Group.svg`} />
                             </div>
@@ -475,15 +504,25 @@ export default function Game() {
                     <div className={styles.handCards}>
                         {hand.length === 0 && <span className={styles.emptyHand}>カードなし</span>}
                         {hand.map((cardId, idx) => {
-                            const meta = CARD_LIBRARY[cardId]
+                            const meta = cardId === SPOT_CARD_ID
+                                ? {
+                                    id: SPOT_CARD_ID,
+                                    label: spotCardName,
+                                    detail: 'AI生成のスペシャルカード（デッキ外）',
+                                    category: 'attack' as const
+                                }
+                                : CARD_LIBRARY[cardId]
                             if (!meta) return null
-                            const usable = meta.category === 'defense'
-                                ? isDefenseTurn
-                                : canPlayAttackCard
+                            const perCardCategoryClass = categoryClass[meta.category] ?? ''
+                            const usable = cardId === SPOT_CARD_ID
+                                ? false
+                                : meta.category === 'defense'
+                                    ? isDefenseTurn
+                                    : canPlayAttackCard
                             return (
                                 <button
                                     key={`${cardId}-${idx}`}
-                                    className={`${styles.cardToken} ${selectedCardIndex === idx ? styles.cardTokenSelected : ''}`}
+                                    className={`${styles.cardToken} ${selectedCardIndex === idx ? styles.cardTokenSelected : ''} ${perCardCategoryClass}`}
                                     disabled={!usable}
                                     onClick={() => {
                                         if (!usable) return
@@ -495,7 +534,7 @@ export default function Game() {
                                     </div>
                                     <div className={styles.cardWrap}>
                                         <p className={`${styles.selectedCardName} ${styles.cardName}`}><span>{meta.label}</span></p>
-                                        <p className={`${styles.selectedCardDetail} ${styles.cardDetail}`}>{meta.detail}相手に1ダメージ＋2ターンの間</p>
+                                        <p className={`${styles.selectedCardDetail} ${styles.cardDetail}`}>{meta.detail}</p>
                                     </div>
                                 </button>
                             )
@@ -508,7 +547,7 @@ export default function Game() {
                         <span className={styles.mulliganHint}>防御カード3枚のときのみ使用可（ターン終了）</span>
                     </div> */}
                 </section>
-                <div className={styles.cardButtons}>
+                <div className={`${styles.cardButtons} ${playersToDisplay.length <= 4 ? styles.btnStyleAdjustment : ''}`}>
                     <button
                         className={styles.cardBtn}
                         disabled={phase === 'defense' ? !isDefenseTurn : !canPlayAttackCard}
