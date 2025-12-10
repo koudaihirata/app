@@ -13,14 +13,15 @@ type S = {
 const initS: S = { players:[], hp:{}, round:1, turn:'' }
 const MAX_HP = 10
 const CLIENT_ID_STORAGE_KEY = 'rooms:clientId'
+type SharedPlayView = { attacker?: string | null; attackCardId?: number | null; target?: string | null; defenseCardId?: number | null }
 
-type DefenseSnapshot = { attacker: string; target: string; damage: number; cardId?: number }
+type DefenseSnapshot = { attacker: string; target: string; damage: number; cardId?: number; defenseCardId?: number }
 type GameStartedMsg = { type: 'game_started'; players?: string[]; hp?: Record<string, number>; round?: number; turn?: string }
 type StateMsg = { type: 'state'; hp?: Record<string, number>; round?: number; turn?: string; phase?: 'action' | 'defense'; defense?: DefenseSnapshot }
-type PlayedMsg = { type: 'played'; delta?: { hp?: Record<string, number> }; next?: { round?: number; turn?: string }; defense?: { by: string; cardId?: number; blocked: number } }
+type PlayedMsg = { type: 'played'; by?: string; cardId?: number; target?: string; delta?: { hp?: Record<string, number> }; next?: { round?: number; turn?: string }; defense?: { by: string; cardId?: number; blocked: number; cards?: number[] } }
 type GameOverMsg = { type: 'game_over'; winner?: string }
 type PhaseChangedMsg = { type: 'phase_changed'; phase: 'lobby' | 'game' }
-type DefenseRequestedMsg = { type: 'defense_requested'; attacker: string; target: string; damage: number; cardId: number }
+type DefenseRequestedMsg = { type: 'defense_requested'; attacker: string; target: string; damage: number; cardId: number; defenseCardId?: number }
 type HandUpdateMsg = { type: 'hand_update'; hand: number[] }
 type GameWsMsg = GameStartedMsg | StateMsg | PlayedMsg | GameOverMsg | PhaseChangedMsg | DefenseRequestedMsg | HandUpdateMsg
 
@@ -80,6 +81,7 @@ export default function Game() {
     const isDefenseTurn = phase === 'defense' && defensePrompt?.target === name
     const canPlayAttackCard = phase === 'action' && isMyTurn
     const canSelectTarget = phase === 'action'
+    const [playView, setPlayView] = useState<SharedPlayView>({ attacker: null, attackCardId: null, target: null, defenseCardId: null })
     // 手札引き直し関係
     // const allDefenseHand = hand.length === 3 && hand.every(cardId => CARD_LIBRARY[cardId]?.category === 'defense')
     // const canMulligan = canPlayAttackCard && allDefenseHand
@@ -148,6 +150,7 @@ export default function Game() {
                         setHand([])
                         setPhase('action')
                         setDefensePrompt(null)
+                        setPlayView({ attacker: null, attackCardId: null, target: null, defenseCardId: null })
                         setSelectedTarget(null)
                         setSelectedCardIndex(null)
                         break
@@ -165,6 +168,14 @@ export default function Game() {
                         })
                         setPhase(typedMsg.phase ?? 'action')
                         setDefensePrompt(typedMsg.defense ?? null)
+                        if (typedMsg.defense) {
+                            setPlayView({
+                                attacker: typedMsg.defense.attacker,
+                                attackCardId: typedMsg.defense.cardId ?? null,
+                                target: typedMsg.defense.target,
+                                defenseCardId: typedMsg.defense.defenseCardId ?? null
+                            })
+                        }
                         break
                     case 'played':
                         setSt(prev => {
@@ -186,6 +197,16 @@ export default function Game() {
                         })
                         setPhase('action')
                         setDefensePrompt(null)
+                        setPlayView({
+                            attacker: typedMsg.by ?? null,
+                            attackCardId: typedMsg.cardId ?? null,
+                            target: typedMsg.target ?? null,
+                            defenseCardId: typedMsg.defense?.cardId ?? (
+                                typedMsg.defense?.cards && typedMsg.defense.cards.length > 0
+                                    ? typedMsg.defense.cards[typedMsg.defense.cards.length - 1]
+                                    : null
+                            )
+                        })
                         setSelectedTarget(null)
                         setSelectedCardIndex(null)
                         break
@@ -200,6 +221,7 @@ export default function Game() {
                         }
                         setDefensePrompt(null)
                         setPhase('action')
+                        setPlayView({ attacker: null, attackCardId: null, target: null, defenseCardId: null })
                         setSelectedCardIndex(null)
                         break
                     case 'defense_requested':
@@ -207,9 +229,16 @@ export default function Game() {
                             attacker: typedMsg.attacker,
                             target: typedMsg.target,
                             damage: typedMsg.damage,
-                            cardId: typedMsg.cardId
+                            cardId: typedMsg.cardId,
+                            defenseCardId: typedMsg.defenseCardId
                         })
                         setPhase('defense')
+                        setPlayView({
+                            attacker: typedMsg.attacker,
+                            attackCardId: typedMsg.cardId,
+                            target: typedMsg.target,
+                            defenseCardId: typedMsg.defenseCardId ?? null
+                        })
                         setSelectedTarget(null)
                         setSelectedCardIndex(null)
                         break
@@ -281,6 +310,12 @@ export default function Game() {
             if (!isDefenseTurn) return
             if (selectedCardId !== null) {
                 if (!isDefenseCard(selectedCardId)) return
+                setPlayView(prev => ({
+                    attacker: defensePrompt?.attacker ?? prev.attacker ?? st.turn,
+                    attackCardId: defensePrompt?.cardId ?? prev.attackCardId ?? null,
+                    target: defensePrompt?.target ?? prev.target ?? null,
+                    defenseCardId: selectedCardId
+                }))
                 play(selectedCardId)
                 setSelectedCardIndex(null)
             } else {
@@ -333,10 +368,9 @@ export default function Game() {
         return ordered
     })()
     const defenseTarget = defensePrompt?.target
-    const selectedCardId = selectedCardIndex !== null ? hand[selectedCardIndex] : null
-    const selectedCardMeta = (() => {
-        if (selectedCardId === null) return undefined
-        if (selectedCardId === SPOT_CARD_ID) {
+    const resolveCardMetaById = (cardId: number | null | undefined) => {
+        if (cardId === null || cardId === undefined) return undefined
+        if (cardId === SPOT_CARD_ID) {
             return {
                 id: SPOT_CARD_ID,
                 label: spotCardName,
@@ -344,8 +378,11 @@ export default function Game() {
                 category: 'attack' as const
             }
         }
-        return CARD_LIBRARY[selectedCardId]
-    })()
+        return CARD_LIBRARY[cardId]
+    }
+
+    const selectedCardId = selectedCardIndex !== null ? hand[selectedCardIndex] : null
+    const selectedCardMeta = resolveCardMetaById(selectedCardId)
 
     const defaultAttackTarget = (current: string) => {
         const order = st.players.length ? st.players : Object.keys(st.hp)
@@ -359,6 +396,42 @@ export default function Game() {
         }
         return null
     }
+
+    const attackCardIdForDisplay = (() => {
+        if (phase === 'defense' && defensePrompt) {
+            return defensePrompt.cardId ?? playView.attackCardId
+        }
+        if (canPlayAttackCard && selectedCardId !== null) return selectedCardId
+        return playView.attackCardId ?? null
+    })()
+
+    const defenseCardIdForDisplay = (() => {
+        if (phase === 'defense') {
+            if (isDefenseTurn && selectedCardId !== null) return selectedCardId
+            if (defensePrompt?.defenseCardId !== undefined) return defensePrompt.defenseCardId
+            return playView.defenseCardId ?? null
+        }
+        return playView.defenseCardId ?? null
+    })()
+
+    const leftPlayerName = (() => {
+        if (phase === 'defense' && defensePrompt) return defensePrompt.attacker
+        if (canPlayAttackCard) return st.turn
+        return playView.attacker ?? st.turn
+    })()
+
+    const rightPlayerName = (() => {
+        if (phase === 'defense' && defensePrompt) return defensePrompt.target
+        if (canPlayAttackCard) return selectedTarget
+        return playView.target ?? selectedTarget
+    })()
+
+    const leftCardMeta = resolveCardMetaById(attackCardIdForDisplay)
+    const rightCardMeta = (() => {
+        if (phase === 'defense') return resolveCardMetaById(defenseCardIdForDisplay)
+        if (canPlayAttackCard) return selectedTarget ? selectedCardMeta : null
+        return resolveCardMetaById(playView.defenseCardId ?? null)
+    })()
 
     // let turnInfoMessage = ''
     // if (phase === 'defense') {
@@ -421,9 +494,9 @@ export default function Game() {
                 </header>
 
                 <section className={styles.playArea}>
-                    <CardSlot playerName={st.turn} card={selectedCardMeta} />
+                    <CardSlot playerName={leftPlayerName} card={leftCardMeta} />
                     <div><p>→</p></div>
-                    <CardSlot playerName={selectedTarget} card={selectedTarget ? selectedCardMeta : null} />
+                    <CardSlot playerName={rightPlayerName} card={rightCardMeta ?? null} />
                 </section>
             </div>
 
