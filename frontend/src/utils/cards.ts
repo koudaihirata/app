@@ -1,4 +1,4 @@
-export type CardCategory = 'attack' | 'defense' | 'heal'
+export type CardCategory = 'attack' | 'defense' | 'heal' | 'special'
 export type CardMeta = {
     id: number
     label: string

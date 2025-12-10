@@ -383,9 +383,35 @@ export default function Game() {
         attack: styles.attack,
         defense: styles.defense,
         heal: styles.heal,
+        special: styles.special
     }
 
-    const categoryClassName = selectedCardMeta ? categoryClass[selectedCardMeta.category] : ''
+    const CardSlot = ({
+        playerName,
+        card
+    }: {
+        playerName?: string | null
+        card: typeof selectedCardMeta | null | undefined
+    }) => (
+        <div className={styles.cardSlot}>
+            <p>{playerName ?? '---'}</p>
+            {card ? (
+                <div className={`${styles.selectedCardBar} ${categoryClass[card.category] ?? ''}`}>
+                    <div className={styles.cardImg}>
+                        <img src={`Group.svg`} />
+                    </div>
+                    <div className={styles.cardWrap}>
+                        <p className={styles.selectedCardName}><span className={styles.selectedCardNameLabel}>{card.label}</span></p>
+                        <p className={styles.selectedCardDetail}>{card.detail}</p>
+                    </div>
+                </div>
+            ) : (
+                <div className={styles.selectedCardBar}>
+                    <span className={styles.selectedCardDetail}>カードを選択してください</span>
+                </div>
+            )}
+        </div>
+    )
 
     return (
         <div className={styles.page}>
@@ -395,21 +421,9 @@ export default function Game() {
                 </header>
 
                 <section className={styles.playArea}>
-                    {selectedCardMeta ? (
-                        <div className={`${styles.selectedCardBar} ${categoryClassName}`}>
-                            <div className={styles.cardImg}>
-                                <img src={`Group.svg`} />
-                            </div>
-                            <div className={styles.cardWrap}>
-                                <p className={styles.selectedCardName}><span className={styles.selectedCardNameLabel}>{selectedCardMeta.label}</span></p>
-                                <p className={styles.selectedCardDetail}>{selectedCardMeta.detail}</p>
-                            </div>
-                        </div>
-                    ):(
-                        <div className={styles.selectedCardBar}>
-                            <span className={styles.selectedCardDetail}>カードを選択してください</span>
-                        </div>
-                    )}
+                    <CardSlot playerName={st.turn} card={selectedCardMeta} />
+                    <div><p>→</p></div>
+                    <CardSlot playerName={selectedTarget} card={selectedTarget ? selectedCardMeta : null} />
                 </section>
             </div>
 
@@ -509,7 +523,7 @@ export default function Game() {
                                     id: SPOT_CARD_ID,
                                     label: spotCardName,
                                     detail: 'AI生成のスペシャルカード（デッキ外）',
-                                    category: 'attack' as const
+                                    category: 'special' as const
                                 }
                                 : CARD_LIBRARY[cardId]
                             if (!meta) return null

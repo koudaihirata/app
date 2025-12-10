@@ -1,3 +1,5 @@
+@import '../../utils/Color/_variables.css';
+
 .page {
   height: 100vh;
   padding: 0 24px;
@@ -26,12 +28,19 @@
   height: 35vh;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+}
 
-  /* border: 1px solid tomato; */
+.cardSlot {
+  height: 80%;
+
+  > p {
+    margin: 0;
+  }
 }
 
 .selectedCardBar {
-  height: 80%;
+  height: 100%;
   aspect-ratio: 125 / 202;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
@@ -372,11 +381,14 @@
 
 
 .heal {
-  background: #99DD96;
+  background: var(--healColor);
 }
 .defense {
-  background: #53659F;
+  background: var(--defenseColor);
 }
 .attack {
-  background: #CB4A4A;
+  background: var(--attackColor);
+}
+.special {
+  background: var(--specialColor);
 }

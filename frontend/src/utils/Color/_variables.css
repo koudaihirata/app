@@ -1,0 +1,23 @@
+:root {
+    --attackColor: #CB4A4A;  /* ネズミ色 */
+    --defenseColor: #53659F;  /* 薄ネズミ色 */
+    --healColor: #99DD96;  /* 薄い文字の色 */
+    --specialColor: #fff;  /* 不透明度70%の白色 */
+    
+    --textColor: #010418;  /* 文字の色 */
+
+    --gray: #E6E6E6;  /* 灰色 */
+    --grayText: #8C8C8C;  /* 灰色のテキスト */
+    --whiteText: #FFFFFF;  /* 白色のテキスト */
+    --red: #EC6F7C;  /* 赤色 */
+    --bgHover: #D9D9D9;  /* ホバーした時の背景 */
+}
+
+/* 
+例）
+    @import '../../utils/Color/_variables.css';
+
+    .test {
+        background-color: var(--mouseColor);
+    } 
+*/
