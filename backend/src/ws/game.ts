@@ -18,6 +18,7 @@ export type PendingDefense = {
     totalDamage: number
     blocked: number
     cardsUsed: number[]
+    lastDefenseCardId?: number
 }
 
 export type GameState = {
@@ -194,7 +195,8 @@ export class GameEngine {
                     attacker: this.state.pendingDefense.attacker,
                     target: this.state.pendingDefense.target,
                     damage: this.state.pendingDefense.damage,
-                    cardId: this.state.pendingDefense.cardId
+                    cardId: this.state.pendingDefense.cardId,
+                    defenseCardId: this.state.pendingDefense.lastDefenseCardId
                 } : undefined
             })
             this.sendHandSnapshot(deps, actor)
@@ -228,7 +230,8 @@ export class GameEngine {
                     attacker: this.state.pendingDefense.attacker,
                     target: this.state.pendingDefense.target,
                     damage: this.state.pendingDefense.damage,
-                    cardId: this.state.pendingDefense.cardId
+                    cardId: this.state.pendingDefense.cardId,
+                    defenseCardId: this.state.pendingDefense.lastDefenseCardId
                 } : undefined
             })
             return
@@ -269,14 +272,15 @@ export class GameEngine {
                     return
             }
 
-            this.state.pendingDefense = { attacker: actor, target: targetName, cardId, damage, totalDamage: damage, blocked: 0, cardsUsed: [] }
+            this.state.pendingDefense = { attacker: actor, target: targetName, cardId, damage, totalDamage: damage, blocked: 0, cardsUsed: [], lastDefenseCardId: undefined }
             this.state.phase = 'defense'
             deps.broadcast({
                 type: 'defense_requested',
                 attacker: actor,
                 target: targetName,
                 damage,
-                cardId
+                cardId,
+                defenseCardId: undefined
             })
             return
         }
@@ -352,6 +356,7 @@ export class GameEngine {
         pending.damage = Math.max(0, pending.damage - defenseValue)
         pending.blocked += defenseValue
         pending.cardsUsed.push(parsed.cardId)
+        pending.lastDefenseCardId = parsed.cardId
 
         if (pending.damage <= 0) {
             return this.finishPendingDefense(deps)
@@ -361,7 +366,8 @@ export class GameEngine {
             attacker: pending.attacker,
             target: pending.target,
             damage: pending.damage,
-            cardId: pending.cardId
+            cardId: pending.cardId,
+            defenseCardId: parsed.cardId
         })
         return
     }
@@ -399,6 +405,7 @@ export class GameEngine {
             defense: {
                 by: pending.target,
                 blocked,
+                cardId: pending.lastDefenseCardId,
                 cards: pending.cardsUsed
             }
         })
