@@ -461,30 +461,39 @@ export default function Game() {
 
     const CardSlot = ({
         playerName,
-        card
+        card,
+        isSelf
     }: {
         playerName?: string | null
         card: typeof selectedCardMeta | null | undefined
-    }) => (
-        <div className={styles.cardSlot}>
-            <p>{playerName ?? '---'}</p>
-            {card ? (
-                <div className={`${styles.selectedCardBar} ${categoryClass[card.category] ?? ''}`}>
-                    <div className={styles.cardImg}>
-                        <img src={`Group.svg`} />
+        isSelf: boolean
+    }) => {
+        const showCard = card && (card.category !== 'attack' || isSelf)
+        return (
+            <div className={styles.cardSlot}>
+                <p>{playerName ?? '---'}</p>
+                {showCard ? (
+                    <div className={`${styles.selectedCardBar} ${categoryClass[card.category] ?? ''}`}>
+                        <div className={styles.cardImg}>
+                            <img src={`Group.svg`} />
+                        </div>
+                        <div className={styles.cardWrap}>
+                            <p className={styles.selectedCardName}><span className={styles.selectedCardNameLabel}>{card.label}</span></p>
+                            <p className={styles.selectedCardDetail}>{card.detail}</p>
+                        </div>
                     </div>
-                    <div className={styles.cardWrap}>
-                        <p className={styles.selectedCardName}><span className={styles.selectedCardNameLabel}>{card.label}</span></p>
-                        <p className={styles.selectedCardDetail}>{card.detail}</p>
+                ) : (
+                    <div className={styles.selectedCardBar}>
+                        <p className={styles.selectedCardDetail}>
+                            {
+                                isDefenseTurn ? '防御カードを選択してください' : isSelf ? 'カードを選択してください' : selectedTarget ? `${selectedTarget}をターゲット中` :'ターゲットを選択してください'
+                            }
+                        </p>
                     </div>
-                </div>
-            ) : (
-                <div className={styles.selectedCardBar}>
-                    <span className={styles.selectedCardDetail}>カードを選択してください</span>
-                </div>
-            )}
-        </div>
-    )
+                )}
+            </div>
+        )
+    }
 
     return (
         <div className={styles.page}>
@@ -494,9 +503,9 @@ export default function Game() {
                 </header>
 
                 <section className={styles.playArea}>
-                    <CardSlot playerName={leftPlayerName} card={leftCardMeta} />
+                    <CardSlot playerName={leftPlayerName} card={leftCardMeta} isSelf={true} />
                     <div><p>→</p></div>
-                    <CardSlot playerName={rightPlayerName} card={rightCardMeta ?? null} />
+                    <CardSlot playerName={rightPlayerName} card={rightCardMeta ?? null} isSelf={false} />
                 </section>
             </div>
 
