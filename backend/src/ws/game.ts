@@ -338,6 +338,11 @@ export class GameEngine {
             deps.send(ws, { type:'error', text:'使用できるのは防御カードのみです' })
             return
         }
+        // 1攻撃につき防御カードは1枚だけ使用可
+        if (pending.cardsUsed.length >= 1) {
+            deps.send(ws, { type:'error', text:'この攻撃にはこれ以上防御カードを使えません' })
+            return
+        }
         if (!this.useCard(deps, actor, parsed.cardId)) return
 
         let defenseValue = 0
@@ -358,18 +363,8 @@ export class GameEngine {
         pending.cardsUsed.push(parsed.cardId)
         pending.lastDefenseCardId = parsed.cardId
 
-        if (pending.damage <= 0) {
-            return this.finishPendingDefense(deps)
-        }
-        deps.broadcast({
-            type: 'defense_requested',
-            attacker: pending.attacker,
-            target: pending.target,
-            damage: pending.damage,
-            cardId: pending.cardId,
-            defenseCardId: parsed.cardId
-        })
-        return
+        // 防御カードは1枚のみ使用可とするため、この時点で防御処理を完了する
+        return this.finishPendingDefense(deps)
     }
 
     private finishPendingDefense(deps: GameDeps): 'game_over' | void {
