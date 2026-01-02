@@ -1,4 +1,5 @@
 // src/ws/lobby.ts
+import { nearBySearch } from '../NearBySearch'
 import type { Client } from '../types'
 
 export type LobbyDeps = {
@@ -17,11 +18,12 @@ export function onLobbyConnect(deps: LobbyDeps, ws: Client, name: string, roomNa
     deps.broadcast({ type: 'system', text: `🔔 ${name} が「${roomName}」に入室しました`, at: Date.now() })
 }
 
-export function handleLobbyMessage(
+export async function handleLobbyMessage(
     deps: LobbyDeps,
     ws: Client,
     name: string,
     clientId: string | undefined,
+    env: { GOOGLE_PLACES_API_KEY?: string },
     parsed: any,                 // 受信メッセージ（JSON）
     promoteToGame: () => void    // フェーズ切替コールバック
 ) {
@@ -34,16 +36,24 @@ export function handleLobbyMessage(
         return
     }
     if (parsed.type === 'start') {
+        console.log('start received')
         if (!clientId || !deps.isHost(clientId)) {
             deps.send(ws, { type: 'error', text: 'ゲームの開始はホストのみが実行できます' })
             return
         }
 
-        const lat = typeof parsed.lat === 'number' ? parsed.lat : null
-        const lng = typeof parsed.lng === 'number' ? parsed.lng : null
-        console.log(`緯度:${lat} 経度:${lng}`);
+        const latitude = typeof parsed.lat === 'number' ? parsed.lat : null
+        const longitude = typeof parsed.lng === 'number' ? parsed.lng : null
+        // console.log(`緯度:${latitude} 経度:${longitude}`);
+        const apiKey = env.GOOGLE_PLACES_API_KEY
+        if (!apiKey) {
+            deps.send(ws, { type: 'error', text: 'APIキーが設定されていません' })
+            return
+        }
+        const results = await nearBySearch(latitude, longitude, apiKey)
+        console.log(results)
 
-        if (lat === null || lng === null) {
+        if (latitude === null || longitude === null) {
             deps.send(ws, { type: 'error', text: '位置情報が取得できません' })
             return
         }

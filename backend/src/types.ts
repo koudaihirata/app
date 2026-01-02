@@ -1,6 +1,7 @@
 // src/types.ts
 export interface Env {
     ROOM: DurableObjectNamespace
+    GOOGLE_PLACES_API_KEY?: string
 }
 
 export type Client = WebSocket

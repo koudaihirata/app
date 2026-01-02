@@ -179,7 +179,7 @@ export class Room {
       this.game.ensureStarted(gameDeps)
     }
 
-    server.addEventListener('message', (evt) => {
+    server.addEventListener('message', async (evt) => {
       try {
         let text = ''
         if (typeof evt.data === 'string') {
@@ -225,7 +225,7 @@ export class Room {
 
         if (this.phase === 'lobby') {
           const clientId = this.clientIds.get(server)
-          handleLobbyMessage(lobbyDeps, server, name, clientId, msg, promoteToGame)
+          await handleLobbyMessage(lobbyDeps, server, name, clientId, this.env, msg, promoteToGame)
           return
         }
 
