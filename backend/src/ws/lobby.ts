@@ -38,6 +38,16 @@ export function handleLobbyMessage(
             deps.send(ws, { type: 'error', text: 'ゲームの開始はホストのみが実行できます' })
             return
         }
+
+        const lat = typeof parsed.lat === 'number' ? parsed.lat : null
+        const lng = typeof parsed.lng === 'number' ? parsed.lng : null
+        console.log(`緯度:${lat} 経度:${lng}`);
+
+        if (lat === null || lng === null) {
+            deps.send(ws, { type: 'error', text: '位置情報が取得できません' })
+            return
+        }
+
         // フロントにフェーズ変更を通知
         deps.broadcast({ type: 'phase_changed', phase: 'game' })
         promoteToGame()

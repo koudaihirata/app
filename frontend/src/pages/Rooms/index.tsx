@@ -7,6 +7,7 @@ import { appendLog, connected, disconnected, joined, setMembers, setName, setRoo
 import { baseURL } from '../../utils/baseURL';
 import NormalBtn from '../../components/button/NormalBtn';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { geoError, geoOptions } from '../../utils/geoFunc';
 
 type WsMsg =
   | { type: 'hello'; text: string }
@@ -75,33 +76,6 @@ export default function Rooms() {
   }
 
   const clientIdRef = useRef<string>(ensureClientId())
-
-  useEffect(() => {
-    const navState = location.state as NavState
-    if (!navState || navState === lastNavState.current) return
-    lastNavState.current = navState
-    if (navState.roomId) dispatch(setRoom(navState.roomId))
-    if (navState.name) dispatch(setName(navState.name))
-    if (navState.members) {
-      if (typeof navState.hostId !== 'undefined') {
-        dispatch(setMembers(navState.members, navState.hostId))
-      } else {
-        dispatch(setMembers(navState.members))
-      }
-    }
-    if (navState.joined) {
-      dispatch(joined(navState.roomId ?? state.roomId))
-      shouldReconnect.current = true
-    }
-  }, [location.state, state.roomId])
-
-  useEffect(() => {
-    try {
-      sessionStorage.setItem(IDENTITY_STORAGE_KEY, JSON.stringify({ roomId: state.roomId, name: state.name }))
-    } catch (error) {
-      console.warn('failed to persist identity', error)
-    }
-  }, [state.roomId, state.name])
 
   // Cloudflare Workers の WebSocket エンドポイント
   const WS_BASE = `${baseURL}?room=${encodeURIComponent(state.roomId)}&name=${encodeURIComponent(state.name)}&cid=${encodeURIComponent(clientIdRef.current)}`
@@ -239,6 +213,33 @@ export default function Rooms() {
     connect()
   }, [state.connected, state.roomId, state.name])
 
+    useEffect(() => {
+    const navState = location.state as NavState
+    if (!navState || navState === lastNavState.current) return
+    lastNavState.current = navState
+    if (navState.roomId) dispatch(setRoom(navState.roomId))
+    if (navState.name) dispatch(setName(navState.name))
+    if (navState.members) {
+      if (typeof navState.hostId !== 'undefined') {
+        dispatch(setMembers(navState.members, navState.hostId))
+      } else {
+        dispatch(setMembers(navState.members))
+      }
+    }
+    if (navState.joined) {
+      dispatch(joined(navState.roomId ?? state.roomId))
+      shouldReconnect.current = true
+    }
+  }, [location.state, state.roomId])
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(IDENTITY_STORAGE_KEY, JSON.stringify({ roomId: state.roomId, name: state.name }))
+    } catch (error) {
+      console.warn('failed to persist identity', error)
+    }
+  }, [state.roomId, state.name])
+
   console.log(state);
 
   const isHost = Boolean(state.hostId && state.hostId === clientIdRef.current)
@@ -299,8 +300,15 @@ export default function Rooms() {
                   return
                 }
                 if (state.members.length > 1) {
-                  if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
-                  wsRef.current.send(JSON.stringify({ type: 'start', clientId: clientIdRef.current }))
+                  navigator.geolocation.getCurrentPosition((pos) => {
+                    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+                    wsRef.current.send(JSON.stringify({
+                      type: 'start',
+                      clientId: clientIdRef.current,
+                      lat: pos.coords.latitude,
+                      lng: pos.coords.longitude,
+                    }))
+                  }, geoError, geoOptions)
                 } else {
                   dispatch(appendLog(`❗ error: ゲームを始めるには2人以上が必要です`))
                 }

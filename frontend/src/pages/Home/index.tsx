@@ -6,7 +6,7 @@ export default function Home() {
 
     useEffect(() => {
         navigate('/rooms')
-    },[])
+    },[navigate])
 
     return(
         <>
