@@ -34,6 +34,7 @@ export type OutboundWsMsg =
     | { type: 'hand_update'; hand: number[] }
     | { type: 'game_over'; winner: string }
     | { type: 'error'; text: string; code?: string }
+    | { type: 'spot_choice'; spot: string; index: number }
 
 
     /** JSON.parse の直後に使う安全ヘルパ */

@@ -5,6 +5,7 @@ import type { Client } from '../types'
 export type LobbyDeps = {
     send: (ws: Client, obj: unknown) => void
     broadcast: (obj: unknown) => void
+    sendTo: (player: string, obj: unknown) => void
     getMembers: () => string[]
     getHostId: () => string | null
     isHost: (clientId?: string) => boolean
@@ -36,7 +37,7 @@ export async function handleLobbyMessage(
         return
     }
     if (parsed.type === 'start') {
-        console.log('start received')
+        // console.log('start received')
         if (!clientId || !deps.isHost(clientId)) {
             deps.send(ws, { type: 'error', text: 'ゲームの開始はホストのみが実行できます' })
             return
@@ -44,7 +45,10 @@ export async function handleLobbyMessage(
 
         const latitude = typeof parsed.lat === 'number' ? parsed.lat : null
         const longitude = typeof parsed.lng === 'number' ? parsed.lng : null
-        // console.log(`緯度:${latitude} 経度:${longitude}`);
+        if (latitude === null || longitude === null) {
+            deps.send(ws, { type: 'error', text: '位置情報が取得できません' })
+            return
+        }
         const apiKey = env.GOOGLE_PLACES_API_KEY
         if (!apiKey) {
             deps.send(ws, { type: 'error', text: 'APIキーが設定されていません' })
@@ -53,9 +57,14 @@ export async function handleLobbyMessage(
         const results = await nearBySearch(latitude, longitude, apiKey)
         console.log(results)
 
-        if (latitude === null || longitude === null) {
-            deps.send(ws, { type: 'error', text: '位置情報が取得できません' })
-            return
+        const members = deps.getMembers()
+        if (results.length > 0) {
+            members.forEach(player => {
+                const idx = Math.floor(Math.random() * results.length)
+                const pick = results[idx]
+                if (!pick) return
+                deps.sendTo(player, { type: 'spot_choice', spot: pick.name, index: idx })
+            })
         }
 
         // フロントにフェーズ変更を通知

@@ -143,6 +143,10 @@ export class Room {
         }
         this.broadcast(o)
       },
+      sendTo: (player: string, o: unknown) => {
+        const target = clientByName(player)
+        if (target) this.send(target, o)
+      },
       getMembers: () => this.members(),
       getHostId: () => this.hostClientId,
       isHost: (clientId?: string) => !!clientId && clientId === this.hostClientId,
