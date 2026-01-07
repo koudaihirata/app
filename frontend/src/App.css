@@ -3,6 +3,7 @@
   height: 100vh;
   margin: 0 auto;
   text-align: center;
+  background: linear-gradient(168deg, #D4FFED 0%, #FFF 25%, #FFF 50%, #FFF0EC 75%, #FFF 100%);
 }
 
 .logo {
