@@ -252,16 +252,17 @@ export default function Rooms() {
           <div className={styles.roomConnectArea}>
             <h2 className={styles.roomTitle}>ロゴ</h2>
             <div className={styles.inputWrap}>
-              <input placeholder="roomId" value={state.roomId} onChange={(e) => dispatch(setRoom(e.target.value))} disabled={state.connected}/>
-              <input placeholder="name" value={state.name} onChange={(e) => dispatch(setName(e.target.value))} disabled={state.connected}/>
+              <input placeholder="ニックネーム" value={state.name} onChange={(e) => dispatch(setName(e.target.value))} disabled={state.connected}/>
+              <input placeholder="ルームの名前" value={state.roomId} onChange={(e) => dispatch(setRoom(e.target.value))} disabled={state.connected}/>
             </div>
           </div>
           <div className={styles.roomJoiningBtn}>
-            <NormalBtn label='決定' bg='#717171' onClick={connect}/>
+            <NormalBtn label='決定' onClick={connect}/>
 
-            <pre className={styles.systemLog}>
+            {/* システムログ機能 */}
+            {/* <pre className={styles.systemLog}>
               { state.logs.slice().reverse().join('\n') }
-            </pre>
+            </pre> */}
           </div>
           
           {/* チャット機能は後ででいいので一旦放置
@@ -275,25 +276,30 @@ export default function Rooms() {
         <div className={styles.membersSection}>
           <div className={styles.membersListWrap}>
             <div className={styles.membersTitleWrap}>
-              <p onClick={disconnect} className={styles.backBtn}>◀︎</p>
+              <svg onClick={disconnect} xmlns="http://www.w3.org/2000/svg" width="13" height="18" viewBox="0 0 13 18" fill="none">
+                <path d="M12.7628 2.0036C12.7628 0.334737 10.8394 -0.600097 9.52717 0.430963L0.764354 7.31604C-0.254789 8.11679 -0.254787 9.66055 0.764355 10.4613L9.52718 17.3464C10.8394 18.3774 12.7628 17.4426 12.7628 15.7737V2.0036Z" fill="#33AC79"/>
+              </svg>
               <p>{state.roomId}</p>
-              <button className={styles.backBtn} style={{opacity: '0'}}>←</button>
+              <p style={{opacity: '0'}}>←</p>
             </div>
             <div className={styles.membersList}>
               <p className={styles.players}>参加プレイヤー</p>
               <div className={styles.membersWrap}>
-                {Array.from({length: 6}).map((_, index) => (
-                  <div key={index} className={styles.member}  style={!state.members[index] ? {height: "56px"} : {}}>
-                    <p>{state.members[index] || ''}</p>
-                  </div>
-                ))}
+                {Array.from({length: 6}).map((_, index) => {
+                  const member = state.members[index]
+                  return (
+                    <div key={index} className={member ? member === state.name ? styles.My : styles.Member : styles.NotMember}>
+                      <p>{member || ''}</p>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           </div>
           <div className={styles.gameStateBtn}>
             <NormalBtn
               label={isHost ? 'ゲームを開始する' : 'ホスト待機中'}
-              bg={canStartGame ? '#717171' : '#c7c7c7ff'}
+              bg={canStartGame ? '' : '#c7c7c7ff'}
               onClick={() => {
                 if (!isHost) {
                   dispatch(appendLog('❗ error: ゲーム開始はホストのみが実行できます'))
@@ -325,9 +331,10 @@ export default function Rooms() {
               </div>
             )}
 
-            <pre className={styles.systemLog}>
+            {/* システムログ機能 */}
+            {/* <pre className={styles.systemLog}>
               { state.logs.slice().reverse().join('\n') }
-            </pre>
+            </pre> */}
           </div>
         </div>
       }
