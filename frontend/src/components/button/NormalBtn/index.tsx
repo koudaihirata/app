@@ -2,7 +2,7 @@ import styles from './styles.module.css'
 
 type Type = {
     label: string,
-    bg: string,
+    bg?: string,
     onClick: () => void
 }
 

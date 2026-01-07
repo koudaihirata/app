@@ -1,10 +1,12 @@
 :root {
-    --attackColor: #CB4A4A;  /* ネズミ色 */
-    --defenseColor: #53659F;  /* 薄ネズミ色 */
-    --healColor: #99DD96;  /* 薄い文字の色 */
-    --specialColor: #fff;  /* 不透明度70%の白色 */
+    --attackColor: #CB4A4A;  /* 攻撃カードの色 */
+    --defenseColor: #53659F;  /* 防御カードの色 */
+    --healColor: #99DD96;  /* 回復カードの色 */
+    --specialColor: #fff;  /* スペシャルカードの色(開発時のみ) */
     
     --textColor: #010418;  /* 文字の色 */
+
+    --mainColor: #F87355; /* メインの色 */
 
     --gray: #E6E6E6;  /* 灰色 */
     --grayText: #8C8C8C;  /* 灰色のテキスト */
