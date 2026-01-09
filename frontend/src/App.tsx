@@ -11,9 +11,9 @@ import Rooms from './pages/Rooms'
 const router = createBrowserRouter(
   createRoutesFromElements(
     <>
-      <Route path="/" element={<Home />}/>
-      <Route path='/rooms' element={<Rooms />}/>
-      <Route path='/game' element={<Game />}/>
+      <Route path="/" element={<Home />} />
+      <Route path='/rooms' element={<Rooms />} />
+      <Route path='/game' element={<Game />} />
       <Route path="/*" element={<NotFound />} />
     </>
   )

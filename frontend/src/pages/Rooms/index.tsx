@@ -250,7 +250,7 @@ export default function Rooms() {
       {!state.joined ? 
         <section className={styles.roomSection}>
           <div className={styles.roomConnectArea}>
-            <h2 className={styles.roomTitle}>ロゴ</h2>
+            <h1 className={styles.roomTitle}><img src={`logo.svg`} alt="ジオバスター" /></h1>
             <div className={styles.inputWrap}>
               <input placeholder="ニックネーム" value={state.name} onChange={(e) => dispatch(setName(e.target.value))} disabled={state.connected}/>
               <input placeholder="ルームの名前" value={state.roomId} onChange={(e) => dispatch(setRoom(e.target.value))} disabled={state.connected}/>
