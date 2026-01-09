@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { baseURL } from '../../utils/baseURL'
 import styles from './styles.module.css'
 import { CARD_LIBRARY, type CardCategory } from '../../utils/cards'
+import NormalBtn from '../../components/button/NormalBtn'
 
 type S = {
     players: string[]
@@ -460,18 +461,15 @@ export default function Game() {
     }
 
     const CardSlot = ({
-        playerName,
         card,
         isSelf
     }: {
-        playerName?: string | null
         card: typeof selectedCardMeta | null | undefined
         isSelf: boolean
     }) => {
         const showCard = card && (card.category !== 'attack' || isSelf)
         return (
             <div className={styles.cardSlot}>
-                <p>{playerName ?? '---'}</p>
                 {showCard ? (
                     <div className={`${styles.selectedCardBar} ${categoryClass[card.category] ?? ''}`}>
                         <div className={styles.cardImg}>
@@ -499,14 +497,20 @@ export default function Game() {
         <div className={styles.page}>
             <div className={styles.resultArea}>
                 <header className={styles.header}>
-                    <p><span>Round {st.round}</span></p>
+                    <p><span>ターン {st.round}</span></p>
                 </header>
 
-                <section className={styles.playArea}>
-                    <CardSlot playerName={leftPlayerName} card={leftCardMeta} isSelf={true} />
-                    <div><p>→</p></div>
-                    <CardSlot playerName={rightPlayerName} card={rightCardMeta ?? null} isSelf={false} />
-                </section>
+                <div  className={styles.playArea}>
+                    <div className={styles.playLabelArea}>
+                        <div className={styles.leftPlayerName}><p>{leftPlayerName ?? '---'}</p></div>
+                        <div className={styles.arrow}><img src={`arrow.svg`}/></div>
+                        <div className={styles.rightPlayerName}><p>{rightPlayerName ?? '---'}</p></div>
+                    </div>
+                    <div className={styles.playCardArea}>
+                        <CardSlot card={leftCardMeta} isSelf={true} />
+                        <CardSlot card={rightCardMeta ?? null} isSelf={false} />
+                    </div>
+                </div>
             </div>
 
             <div className={styles.selectArea}>
@@ -644,13 +648,11 @@ export default function Game() {
                     </div> */}
                 </section>
                 <div className={`${styles.cardButtons} ${playersToDisplay.length <= 4 ? styles.btnStyleAdjustment : ''}`}>
-                    <button
-                        className={styles.cardBtn}
+                    <NormalBtn 
+                        label={selectedCardIndex !== null ? '行動決定' : phase === 'defense' ? '防御しない' : 'ターンエンド'}
                         disabled={phase === 'defense' ? !isDefenseTurn : !canPlayAttackCard}
                         onClick={commitAction}
-                    >
-                        {selectedCardIndex !== null ? '行動決定' : phase === 'defense' ? '防御しない' : 'ターンエンド'}
-                    </button>
+                    /> 
                 </div>
             </div>
         </div>

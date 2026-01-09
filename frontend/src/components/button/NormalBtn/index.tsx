@@ -3,18 +3,21 @@ import styles from './styles.module.css'
 type Type = {
     label: string,
     bg?: string,
-    onClick: () => void
+    onClick: () => void,
+    disabled?: boolean
 }
 
 export default function NormalBtn(props: Type) {
+    const { label, bg, onClick, disabled } = props
     return(
         <>
             <button
                 className={styles.btn}
-                style={{backgroundColor: props.bg}}
-                onClick={props.onClick}
+                style={{backgroundColor: bg}}
+                onClick={onClick}
+                disabled={disabled}
             >
-                {props.label}
+                {label}
             </button>
         </>
     )

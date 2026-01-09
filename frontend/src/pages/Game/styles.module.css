@@ -3,14 +3,13 @@
 .page {
   height: 100vh;
   padding: 0 24px;
-  background: #f4f5f7;
   display: flex;
   flex-direction: column;
 }
 
 .resultArea {
   width: 100%;
-  height: 45%;
+  height: 38vh;
 }
 
 .header {
@@ -19,28 +18,68 @@
 
   > p {
     font-weight: 600;
-    color: #1a202c; 
+    color: var(--textColor); 
   }
 }
 
-.playArea {
+.playLabelArea {
   width: 100%;
-  height: 35vh;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   align-items: center;
+  margin-bottom: .8rem;
+
+  p {
+    margin: 0;
+    padding: 0px 12px;
+    border: 1px solid #3CDE98;
+    background-color: #fff;
+    border-radius: 10px;
+    width: max-content;
+    color: var(--textColor); 
+    font-weight: bold;
+  }
+  .leftPlayerName {
+    grid-column: 1 / 2;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .arrow {
+    grid-column: 2 / 3;
+  }
+  .rightPlayerName {
+    grid-column: 3 / 4;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+}
+.playCardArea {
+  width: 100%;
+  display: flex;
   justify-content: space-between;
 }
 
 .cardSlot {
-  height: 80%;
+  width: 35%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 
   > p {
     margin: 0;
+    border: #3CDE98 1px solid;
+    border-radius: 10px;
   }
 }
 
 .selectedCardBar {
-  height: 100%;
+  width: 100%;
+  max-width: 280px;
+  max-height: 400px;
   aspect-ratio: 125 / 202;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
@@ -51,10 +90,10 @@
 }
 
 .cardImg {
-  width: 85%;
+  width: 90%;
   height: 50%;
   margin: 5% auto 0;
-  border-radius: 10px 10px 0 0;
+  border-radius: 8px 8px 0 0;
   background-color: #fff;
 
   > img {
@@ -70,14 +109,15 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  background-color: #D9D9D9;
+  background-color: #FFF8EA;
 }
 
 .selectedCardName {
   margin: 0;
   width: 120%;
   height: 35%;
-  background-color: #F4F3F3;
+  background-color: #FFF4DB;
+  border: 2.5px solid #FFD17A;
   font-weight: bold;
   box-shadow: 3px 3px 5px 0 rgba(0, 0, 0, 0.25);
   transform: translateY(-8px) rotate(-5deg);
@@ -93,25 +133,24 @@
   
   .selectedCardNameLabel {
     font-size: 20px;
-    -webkit-text-fill-color: white;
-    -webkit-text-stroke: .8px black;
+    /* -webkit-text-fill-color: white;
+    -webkit-text-stroke: .8px black; */
+    color: var(--textColor);
   }
 }
 
 .selectedCardDetail {
-  width: 80%;
-  margin: 8px auto 0;
-  font-size: 12px;
-  color: #4a5568;
+  width: 90%;
+  margin: 0px auto;
+  font-size: 8px;
+  color: var(--textColor);
 }
 
 .selectArea {
-  height: 55%;
+  height: 60%;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   align-items: center;
-  padding-bottom: 24px;
 }
 
 .playersBoard {
@@ -135,6 +174,7 @@
 
     .playerName {
       font-size: 14px;
+      color: var(--textColor); 
     }
   }
 }
@@ -185,7 +225,7 @@
 .playerName {
   font-weight: 600;
   font-size: 20px;
-  color: #1a202c;
+  color: var(--textColor); 
 }
 
 .hpRow {
@@ -231,7 +271,7 @@
 
 .actions {
   width: 100%;
-  margin-top: 16px;
+  margin-top: 24px;
 }
 
 .turnInfo {
@@ -290,7 +330,7 @@
 } */
 
 .cardToken {
-  height: 90%;
+  height: 100%;
   aspect-ratio: 125 / 202;
   border-radius: 10px;
   display: flex;
