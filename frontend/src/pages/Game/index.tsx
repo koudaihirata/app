@@ -359,6 +359,13 @@ export default function Game() {
         return Math.max(0, Math.min(100, (value / MAX_HP) * 100))
     }
 
+    const hpBarClass = (player: string) => {
+        const percent = hpPercent(player)
+        if (percent <= 30) return styles.hpLow
+        if (percent <= 50) return styles.hpHalf
+        return styles.hpFull
+    }
+
     const playersToDisplay = (() => {
         const ordered = st.players.length ? [...st.players] : [...Object.keys(st.hp)]
         const idx = ordered.indexOf(name)
@@ -551,7 +558,7 @@ export default function Game() {
                                         </div>
                                     </div>
                                     <div className={styles.hpBarTrack}>
-                                        <div className={styles.hpBar} style={{ width: `${hpPercent(player)}%` }} />
+                                        <div className={`${styles.hpBar} ${hpBarClass(player)}`} style={{ width: `${hpPercent(player)}%` }} />
                                     </div>
                                 </div>
                             )
@@ -592,11 +599,11 @@ export default function Game() {
                                             </div>
                                         </div>
                                         <div className={styles.hpBarTrack}>
-                                            <div className={styles.hpBar} style={{ width: `${hpPercent(player)}%` }} />
-                                        </div>
+                                        <div className={`${styles.hpBar} ${hpBarClass(player)}`} style={{ width: `${hpPercent(player)}%` }} />
                                     </div>
-                                )
-                            }
+                                </div>
+                            )
+                        }
                         })}
                     </div>
                 </section>

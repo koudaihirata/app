@@ -269,6 +269,18 @@
   transition: width 0.3s ease;
 }
 
+.hpFull {
+  background: linear-gradient(90deg, #68d391, #48bb78);
+}
+
+.hpHalf {
+  background: linear-gradient(90deg, #f6ad55, #ed8936);
+}
+
+.hpLow {
+  background: linear-gradient(90deg, #fc8181, #e53e3e);
+}
+
 .actions {
   width: 100%;
   margin-top: 24px;
