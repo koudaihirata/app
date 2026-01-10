@@ -262,7 +262,7 @@ export class GameEngine {
             let damage = 0
             switch (cardId) {
                 case 101:
-                    damage = 2
+                    damage = 1
                     break;
                 case 102:
                     damage = 3
@@ -348,7 +348,7 @@ export class GameEngine {
         let defenseValue = 0
         switch (parsed.cardId) {
             case 201:
-                defenseValue = 2
+                defenseValue = 1
                 break;
             case 202:
                 defenseValue = 3
